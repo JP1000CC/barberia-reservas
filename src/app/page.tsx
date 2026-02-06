@@ -7,26 +7,46 @@ async function getConfiguracion() {
   const supabase = createServerSupabaseClient();
   const { data } = await supabase
     .from('configuracion')
-    .select('*')
-    .single();
-  return data;
+    .select('clave, valor');
+
+  // Convertir array de key-value a objeto
+  const config: Record<string, string> = {};
+  data?.forEach(row => {
+    config[row.clave] = row.valor;
+  });
+
+  return {
+    nombre_barberia: config.nombre_barberia || 'Mi Barbería',
+    moneda: config.moneda || 'EUR',
+    duracion_slot: parseInt(config.intervalo_minutos || '30'),
+  };
 }
 
 async function getServicios() {
   const supabase = createServerSupabaseClient();
   const { data } = await supabase
     .from('servicios')
-    .select('*')
+    .select('id, nombre, descripcion, duracion_minutos, precio, activo')
     .eq('activo', true)
+    .order('orden')
     .order('nombre');
-  return data || [];
+
+  // Mapear duracion_minutos a duracion para el formulario
+  return (data || []).map(s => ({
+    id: s.id,
+    nombre: s.nombre,
+    descripcion: s.descripcion,
+    duracion: s.duracion_minutos, // Alias para compatibilidad con el form
+    precio: s.precio,
+    activo: s.activo,
+  }));
 }
 
 async function getBarberos() {
   const supabase = createServerSupabaseClient();
   const { data } = await supabase
     .from('barberos')
-    .select('*')
+    .select('id, nombre, email, telefono, activo, color')
     .eq('activo', true)
     .order('nombre');
   return data || [];
@@ -39,23 +59,17 @@ export default async function HomePage() {
     getBarberos(),
   ]);
 
-  const defaultConfig = {
-    nombre_barberia: 'Mi Barbería',
-    moneda: 'EUR',
-    duracion_slot: 30,
-  };
-
   return (
     <main className="min-h-screen bg-gray-50">
       <header className="header-gradient">
-        <h1>{config?.nombre_barberia || defaultConfig.nombre_barberia}</h1>
+        <h1>{config.nombre_barberia}</h1>
         <p>Reserva tu cita en línea</p>
       </header>
 
       <ReservaForm
         servicios={servicios}
         barberos={barberos}
-        config={config || defaultConfig}
+        config={config}
       />
     </main>
   );

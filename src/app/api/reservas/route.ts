@@ -1,46 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
-import { horaAMinutos, minutosAHora, validarEmail, validarTelefono } from '@/lib/utils';
+
+// Convertir hora string a minutos
+function horaAMinutos(hora: string): number {
+  const parts = hora.split(':');
+  return parseInt(parts[0]) * 60 + parseInt(parts[1] || '0');
+}
+
+// Convertir minutos a hora string
+function minutosAHora(minutos: number): string {
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+}
+
+// Validar email
+function validarEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// Validar teléfono español
+function validarTelefono(telefono: string): boolean {
+  const limpio = telefono.replace(/[\s\-]/g, '');
+  // Español: 9 dígitos empezando con 6,7,8,9 o formato internacional +34
+  return /^[6-9]\d{8}$/.test(limpio) ||
+         /^\+34[6-9]\d{8}$/.test(limpio) ||
+         /^34[6-9]\d{8}$/.test(limpio);
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      servicioId,
-      barberoId,
-      fecha,
-      hora,
-      clienteNombre,
-      clienteEmail,
-      clienteTelefono,
-      notas,
-    } = body;
+
+    // Aceptar ambos formatos de nombres (camelCase y snake_case)
+    const servicioId = body.servicio_id || body.servicioId;
+    const barberoId = body.barbero_id || body.barberoId;
+    const fecha = body.fecha;
+    const hora = body.hora;
+    const clienteNombre = body.cliente_nombre || body.clienteNombre;
+    const clienteEmail = body.cliente_email || body.clienteEmail;
+    const clienteTelefono = body.cliente_telefono || body.clienteTelefono;
+    const notas = body.notas;
 
     // Validaciones
     if (!servicioId || !barberoId || !fecha || !hora) {
       return NextResponse.json(
-        { success: false, error: 'Faltan datos de la reserva' },
+        { error: 'Faltan datos de la reserva (servicio, barbero, fecha, hora)' },
         { status: 400 }
       );
     }
 
     if (!clienteNombre || clienteNombre.trim().length < 2) {
       return NextResponse.json(
-        { success: false, error: 'El nombre es requerido' },
+        { error: 'El nombre es requerido (mínimo 2 caracteres)' },
         { status: 400 }
       );
     }
 
     if (!clienteEmail || !validarEmail(clienteEmail)) {
       return NextResponse.json(
-        { success: false, error: 'Email inválido' },
+        { error: 'Email inválido' },
         { status: 400 }
       );
     }
 
     if (!clienteTelefono || !validarTelefono(clienteTelefono)) {
       return NextResponse.json(
-        { success: false, error: 'Teléfono inválido' },
+        { error: 'Teléfono inválido (debe ser un número español de 9 dígitos)' },
         { status: 400 }
       );
     }
@@ -50,13 +76,14 @@ export async function POST(request: NextRequest) {
     // Obtener servicio
     const { data: servicio, error: servicioError } = await supabase
       .from('servicios')
-      .select('*')
+      .select('id, nombre, duracion_minutos, precio')
       .eq('id', servicioId)
       .single();
 
     if (servicioError || !servicio) {
+      console.error('Error obteniendo servicio:', servicioError);
       return NextResponse.json(
-        { success: false, error: 'Servicio no encontrado' },
+        { error: 'Servicio no encontrado' },
         { status: 404 }
       );
     }
@@ -64,13 +91,14 @@ export async function POST(request: NextRequest) {
     // Obtener barbero
     const { data: barbero, error: barberoError } = await supabase
       .from('barberos')
-      .select('*')
+      .select('id, nombre')
       .eq('id', barberoId)
       .single();
 
     if (barberoError || !barbero) {
+      console.error('Error obteniendo barbero:', barberoError);
       return NextResponse.json(
-        { success: false, error: 'Barbero no encontrado' },
+        { error: 'Barbero no encontrado' },
         { status: 404 }
       );
     }
@@ -79,30 +107,50 @@ export async function POST(request: NextRequest) {
     const horaInicioMinutos = horaAMinutos(hora);
     const horaFin = minutosAHora(horaInicioMinutos + servicio.duracion_minutos);
 
-    // Verificar disponibilidad (doble check)
+    // Verificar disponibilidad (doble check para evitar race conditions)
     const { data: reservasExistentes } = await supabase
       .from('reservas')
       .select('id')
       .eq('barbero_id', barberoId)
       .eq('fecha', fecha)
-      .not('estado', 'in', '("cancelada","no_asistio")')
-      .or(`hora_inicio.lt.${horaFin},hora_fin.gt.${hora}`);
+      .not('estado', 'in', '("cancelada","no_asistio")');
 
+    // Verificar manualmente el solapamiento
     if (reservasExistentes && reservasExistentes.length > 0) {
-      return NextResponse.json(
-        { success: false, error: 'El horario ya no está disponible. Por favor, selecciona otro.' },
-        { status: 409 }
-      );
+      // Obtener las reservas completas para verificar solapamiento
+      const { data: reservasCompletas } = await supabase
+        .from('reservas')
+        .select('hora_inicio, hora_fin')
+        .eq('barbero_id', barberoId)
+        .eq('fecha', fecha)
+        .not('estado', 'in', '("cancelada","no_asistio")');
+
+      if (reservasCompletas) {
+        for (const reserva of reservasCompletas) {
+          const reservaInicio = horaAMinutos(reserva.hora_inicio.toString().slice(0, 5));
+          const reservaFin = horaAMinutos(reserva.hora_fin.toString().slice(0, 5));
+          const nuevoInicio = horaInicioMinutos;
+          const nuevoFin = horaInicioMinutos + servicio.duracion_minutos;
+
+          if (nuevoInicio < reservaFin && nuevoFin > reservaInicio) {
+            return NextResponse.json(
+              { error: 'El horario ya no está disponible. Por favor, selecciona otro.' },
+              { status: 409 }
+            );
+          }
+        }
+      }
     }
 
     // Buscar o crear cliente
     let clienteId = null;
+    const telefonoLimpio = clienteTelefono.replace(/[\s\-]/g, '');
+
     const { data: clienteExistente } = await supabase
       .from('clientes')
       .select('id')
-      .or(`telefono.eq.${clienteTelefono},email.eq.${clienteEmail}`)
-      .limit(1)
-      .single();
+      .or(`telefono.eq.${telefonoLimpio},email.eq.${clienteEmail}`)
+      .maybeSingle();
 
     if (clienteExistente) {
       clienteId = clienteExistente.id;
@@ -110,9 +158,9 @@ export async function POST(request: NextRequest) {
       await supabase
         .from('clientes')
         .update({
-          nombre: clienteNombre,
-          email: clienteEmail,
-          telefono: clienteTelefono,
+          nombre: clienteNombre.trim(),
+          email: clienteEmail.trim(),
+          telefono: telefonoLimpio,
         })
         .eq('id', clienteId);
     } else {
@@ -120,9 +168,9 @@ export async function POST(request: NextRequest) {
       const { data: nuevoCliente, error: clienteError } = await supabase
         .from('clientes')
         .insert({
-          nombre: clienteNombre,
-          email: clienteEmail,
-          telefono: clienteTelefono,
+          nombre: clienteNombre.trim(),
+          email: clienteEmail.trim(),
+          telefono: telefonoLimpio,
         })
         .select('id')
         .single();
@@ -142,30 +190,24 @@ export async function POST(request: NextRequest) {
         fecha,
         hora_inicio: hora,
         hora_fin: horaFin,
-        cliente_nombre: clienteNombre,
-        cliente_email: clienteEmail,
-        cliente_telefono: clienteTelefono,
+        cliente_nombre: clienteNombre.trim(),
+        cliente_email: clienteEmail.trim(),
+        cliente_telefono: telefonoLimpio,
         servicio_nombre: servicio.nombre,
         servicio_precio: servicio.precio,
         estado: 'pendiente',
         notas: notas || null,
       })
-      .select(`
-        *,
-        barbero:barberos(nombre),
-        servicio:servicios(nombre, precio, duracion_minutos)
-      `)
+      .select()
       .single();
 
     if (reservaError) {
       console.error('Error al crear reserva:', reservaError);
       return NextResponse.json(
-        { success: false, error: 'Error al crear la reserva' },
+        { error: reservaError.message || 'Error al crear la reserva' },
         { status: 500 }
       );
     }
-
-    // TODO: Enviar email de confirmación aquí
 
     return NextResponse.json({
       success: true,
@@ -175,7 +217,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error en reservas POST:', error);
     return NextResponse.json(
-      { success: false, error: 'Error interno del servidor' },
+      { error: 'Error interno del servidor' },
       { status: 500 }
     );
   }
@@ -185,9 +227,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const fecha = searchParams.get('fecha');
-    const fechaInicio = searchParams.get('fechaInicio');
-    const fechaFin = searchParams.get('fechaFin');
-    const barberoId = searchParams.get('barberoId');
+    const fechaInicio = searchParams.get('fechaInicio') || searchParams.get('fecha_inicio');
+    const fechaFin = searchParams.get('fechaFin') || searchParams.get('fecha_fin');
+    const barberoId = searchParams.get('barberoId') || searchParams.get('barbero_id');
     const estado = searchParams.get('estado');
 
     const supabase = createAdminSupabaseClient();
@@ -223,7 +265,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Error al obtener reservas:', error);
       return NextResponse.json(
-        { success: false, error: 'Error al obtener reservas' },
+        { error: 'Error al obtener reservas' },
         { status: 500 }
       );
     }
@@ -235,7 +277,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error en reservas GET:', error);
     return NextResponse.json(
-      { success: false, error: 'Error interno del servidor' },
+      { error: 'Error interno del servidor' },
       { status: 500 }
     );
   }

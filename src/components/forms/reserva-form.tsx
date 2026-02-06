@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, User, Calendar, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Clock, User, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface Servicio {
   id: string;
@@ -60,7 +60,6 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
   const [submitting, setSubmitting] = useState(false);
   const [reservaExitosa, setReservaExitosa] = useState(false);
 
-  // Generate next 14 days
   const generateDates = () => {
     const dates: Date[] = [];
     const today = new Date();
@@ -74,7 +73,6 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
 
   const availableDates = generateDates();
 
-  // Fetch available slots when date and barbero change
   useEffect(() => {
     if (selectedDate && selectedBarbero && selectedServicio) {
       fetchAvailableSlots();
@@ -85,6 +83,7 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
     if (!selectedDate || !selectedBarbero || !selectedServicio) return;
 
     setLoadingSlots(true);
+    setSelectedTime(null);
     try {
       const dateStr = selectedDate.toISOString().split('T')[0];
       const response = await fetch(
@@ -101,7 +100,7 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
   };
 
   const formatDate = (date: Date) => {
-    const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const days = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     return {
       dayName: days[date.getDay()],
@@ -136,22 +135,11 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
     }
   };
 
-  // Validación de teléfono español más flexible
   const validatePhone = (phone: string): boolean => {
-    // Eliminar espacios y guiones
     const cleanPhone = phone.replace(/[\s\-]/g, '');
-
-    // Teléfono español: 9 dígitos, puede empezar con 6, 7, 8 o 9
-    // 6xx y 7xx = móviles
-    // 8xx y 9xx = fijos y servicios especiales
     const spanishPhoneRegex = /^[6-9]\d{8}$/;
-
-    // También aceptar formato internacional con +34
     const internationalRegex = /^\+34[6-9]\d{8}$/;
-
-    // También aceptar números con prefijo 34 sin +
     const withPrefixRegex = /^34[6-9]\d{8}$/;
-
     return spanishPhoneRegex.test(cleanPhone) ||
            internationalRegex.test(cleanPhone) ||
            withPrefixRegex.test(cleanPhone);
@@ -202,10 +190,11 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
         }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         setReservaExitosa(true);
       } else {
-        const data = await response.json();
         alert(data.error || 'Error al crear la reserva');
       }
     } catch (error) {
@@ -232,10 +221,7 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
           <p><strong>Fecha:</strong> {selectedDate && formatFullDate(selectedDate)}</p>
           <p><strong>Hora:</strong> {selectedTime}</p>
         </div>
-        <button
-          className="btn-primary"
-          onClick={() => window.location.reload()}
-        >
+        <button className="btn-primary" onClick={() => window.location.reload()}>
           Nueva Reserva
         </button>
       </div>
@@ -244,7 +230,6 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
 
   return (
     <div className="reservation-form">
-      {/* Progress Steps */}
       <div className="steps-container">
         {STEPS.map((step, index) => (
           <div key={step.key} className="step-item">
@@ -258,9 +243,7 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
         ))}
       </div>
 
-      {/* Step Content */}
       <div className="step-content">
-        {/* Step 1: Seleccionar Servicio */}
         {currentStep === 'servicio' && (
           <div className="step-panel">
             <h2 className="step-title">Selecciona un servicio</h2>
@@ -287,18 +270,13 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
             </div>
             <div className="step-actions">
               <div></div>
-              <button
-                className="btn-primary"
-                disabled={!selectedServicio}
-                onClick={goToNextStep}
-              >
+              <button className="btn-primary" disabled={!selectedServicio} onClick={goToNextStep}>
                 Continuar <ArrowRight size={16} />
               </button>
             </div>
           </div>
         )}
 
-        {/* Step 2: Seleccionar Barbero */}
         {currentStep === 'barbero' && (
           <div className="step-panel">
             <h2 className="step-title">Selecciona un barbero</h2>
@@ -320,18 +298,13 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
               <button className="btn-secondary" onClick={goToPreviousStep}>
                 <ArrowLeft size={16} /> Atrás
               </button>
-              <button
-                className="btn-primary"
-                disabled={!selectedBarbero}
-                onClick={goToNextStep}
-              >
+              <button className="btn-primary" disabled={!selectedBarbero} onClick={goToNextStep}>
                 Continuar <ArrowRight size={16} />
               </button>
             </div>
           </div>
         )}
 
-        {/* Step 3: Seleccionar Fecha y Hora */}
         {currentStep === 'fechaHora' && (
           <div className="step-panel">
             <h2 className="step-title">Selecciona fecha y hora</h2>
@@ -385,18 +358,13 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
               <button className="btn-secondary" onClick={goToPreviousStep}>
                 <ArrowLeft size={16} /> Atrás
               </button>
-              <button
-                className="btn-primary"
-                disabled={!selectedDate || !selectedTime}
-                onClick={goToNextStep}
-              >
+              <button className="btn-primary" disabled={!selectedDate || !selectedTime} onClick={goToNextStep}>
                 Continuar <ArrowRight size={16} />
               </button>
             </div>
           </div>
         )}
 
-        {/* Step 4: Datos del Cliente */}
         {currentStep === 'datos' && (
           <div className="step-panel">
             <h2 className="step-title">Tus datos</h2>
@@ -464,7 +432,6 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
           </div>
         )}
 
-        {/* Step 5: Confirmar */}
         {currentStep === 'confirmar' && (
           <div className="step-panel">
             <div className="summary-card">
@@ -498,30 +465,15 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
             <div className="client-summary">
               <div className="form-group">
                 <label className="form-label">Nombre completo *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={clienteData.nombre}
-                  readOnly
-                />
+                <input type="text" className="form-input" value={clienteData.nombre} readOnly />
               </div>
               <div className="form-group">
                 <label className="form-label">Correo electrónico *</label>
-                <input
-                  type="email"
-                  className="form-input"
-                  value={clienteData.email}
-                  readOnly
-                />
+                <input type="email" className="form-input" value={clienteData.email} readOnly />
               </div>
               <div className="form-group">
                 <label className="form-label">Teléfono *</label>
-                <input
-                  type="tel"
-                  className="form-input"
-                  value={clienteData.telefono}
-                  readOnly
-                />
+                <input type="tel" className="form-input" value={clienteData.telefono} readOnly />
               </div>
             </div>
 
