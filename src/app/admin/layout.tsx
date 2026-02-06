@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Scissors, Calendar, Users, Briefcase, Settings, LayoutDashboard } from 'lucide-react';
+import AdminHeader from '@/components/admin/admin-header';
 
 export default function AdminLayout({
   children,
@@ -22,8 +23,8 @@ export default function AdminLayout({
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-            <div className="p-2 bg-primary-100 rounded-lg">
-              <Scissors className="w-6 h-6 text-primary-600" />
+            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+              <Scissors className="w-6 h-6 text-white" />
             </div>
             <div>
               <h1 className="font-bold text-gray-900">Mi Barbería</h1>
@@ -49,7 +50,7 @@ export default function AdminLayout({
           <div className="p-4 border-t border-gray-100">
             <Link
               href="/"
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 rounded-lg hover:from-indigo-100 hover:to-purple-100 transition-colors"
             >
               <span className="text-sm font-medium">Ver página pública</span>
             </Link>
@@ -59,6 +60,7 @@ export default function AdminLayout({
 
       {/* Main content */}
       <main className="pl-64">
+        <AdminHeader />
         <div className="p-8">
           {children}
         </div>
