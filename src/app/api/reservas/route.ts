@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import { sendReservationEmails, formatearFechaEmail } from '@/lib/email';
+import { sendReservationWhatsApp, isTwilioConfigured } from '@/lib/whatsapp';
 
 function horaAMinutos(hora: string): number {
   const parts = hora.split(':');
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     const notas = body.notas;
 
     console.log('=== NUEVA RESERVA ===');
-    console.log('Cliente:', clienteNombre, clienteEmail);
+    console.log('Cliente:', clienteNombre, clienteEmail, clienteTelefono);
 
     if (!servicioId || !barberoId || !fecha || !hora) {
       return NextResponse.json({ error: 'Faltan datos de la reserva' }, { status: 400 });
@@ -148,38 +149,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 });
     }
 
-    // Obtener configuración para emails
+    // Obtener configuración
     const { data: configRows } = await supabase
       .from('configuracion')
       .select('clave, valor')
-      .in('clave', ['nombre_barberia', 'direccion', 'telefono', 'email']);
+      .in('clave', ['nombre_barberia', 'direccion', 'telefono', 'email', 'whatsapp_admin']);
 
     const config: Record<string, string> = {};
     configRows?.forEach(row => { config[row.clave] = row.valor; });
 
-    console.log('Config email admin:', config.email);
+    const fechaFormateada = formatearFechaEmail(fecha);
 
-    // Preparar datos para email
-    const emailData = {
+    // Datos comunes para notificaciones
+    const notificationData = {
       clienteNombre: clienteNombre.trim(),
       clienteEmail: clienteEmail.trim(),
+      clienteTelefono: telefonoLimpio,
       servicioNombre: servicio.nombre,
       servicioPrecio: servicio.precio,
       barberoNombre: barbero.nombre,
-      fecha: formatearFechaEmail(fecha),
+      fecha: fechaFormateada,
       hora: hora,
       nombreBarberia: config.nombre_barberia || 'Studio 1994 by Dago',
       direccion: config.direccion,
       telefono: config.telefono,
     };
 
-    // IMPORTANTE: Enviar emails y ESPERAR el resultado
+    // Enviar emails
     try {
-      const emailResults = await sendReservationEmails(emailData, config.email);
+      const emailResults = await sendReservationEmails(notificationData, config.email);
       console.log('Emails enviados:', emailResults);
     } catch (emailError) {
       console.error('Error enviando emails:', emailError);
-      // No fallar la reserva si falla el email
+    }
+
+    // Enviar WhatsApp (si está configurado)
+    if (isTwilioConfigured()) {
+      try {
+        const whatsappResults = await sendReservationWhatsApp(notificationData, config.whatsapp_admin);
+        console.log('WhatsApp enviados:', whatsappResults);
+      } catch (whatsappError) {
+        console.error('Error enviando WhatsApp:', whatsappError);
+      }
     }
 
     return NextResponse.json({ success: true, data: reserva });
