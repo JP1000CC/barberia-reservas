@@ -31,15 +31,12 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
     <tr>
       <td style="padding: 20px 0;">
         <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-          <!-- Header -->
           <tr>
             <td style="background-color: #1a1a1a; padding: 30px; text-align: center;">
               <h1 style="color: #ffffff; margin: 0; font-size: 28px;">Studio 1994 by Dago</h1>
               <p style="color: #cccccc; margin: 10px 0 0 0; font-size: 14px;">Confirmacion de Reserva</p>
             </td>
           </tr>
-
-          <!-- Content -->
           <tr>
             <td style="padding: 40px 30px;">
               <p style="color: #333333; font-size: 16px; margin: 0 0 20px 0;">
@@ -48,8 +45,6 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
               <p style="color: #333333; font-size: 16px; margin: 0 0 30px 0;">
                 Tu reserva ha sido confirmada. Aqui tienes los detalles:
               </p>
-
-              <!-- Reservation Details Box -->
               <table role="presentation" style="width: 100%; background-color: #f8f8f8; border-radius: 8px; margin-bottom: 30px;">
                 <tr>
                   <td style="padding: 25px;">
@@ -94,7 +89,6 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
                   </td>
                 </tr>
               </table>
-
               <p style="color: #666666; font-size: 14px; margin: 0 0 10px 0;">
                 Si necesitas cancelar o modificar tu cita, por favor contactanos con anticipacion.
               </p>
@@ -103,8 +97,6 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
               </p>
             </td>
           </tr>
-
-          <!-- Footer -->
           <tr>
             <td style="background-color: #f8f8f8; padding: 20px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
               <p style="color: #999999; font-size: 12px; margin: 0;">
@@ -141,21 +133,16 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
     <tr>
       <td style="padding: 20px 0;">
         <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-          <!-- Header -->
           <tr>
             <td style="background-color: #2563eb; padding: 30px; text-align: center;">
               <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Nueva Reserva Recibida</h1>
             </td>
           </tr>
-
-          <!-- Content -->
           <tr>
             <td style="padding: 40px 30px;">
               <p style="color: #333333; font-size: 16px; margin: 0 0 20px 0;">
                 Se ha recibido una nueva reserva con los siguientes detalles:
               </p>
-
-              <!-- Client Info -->
               <table role="presentation" style="width: 100%; background-color: #f0f9ff; border-radius: 8px; margin-bottom: 20px;">
                 <tr>
                   <td style="padding: 20px;">
@@ -166,8 +153,6 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
                   </td>
                 </tr>
               </table>
-
-              <!-- Reservation Info -->
               <table role="presentation" style="width: 100%; background-color: #f8f8f8; border-radius: 8px;">
                 <tr>
                   <td style="padding: 20px;">
@@ -184,8 +169,6 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
               </table>
             </td>
           </tr>
-
-          <!-- Footer -->
           <tr>
             <td style="background-color: #f8f8f8; padding: 20px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
               <p style="color: #999999; font-size: 12px; margin: 0;">

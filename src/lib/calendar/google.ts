@@ -11,17 +11,13 @@ export interface CalendarEventData {
 
 // Configurar el cliente de Google Calendar con Service Account
 async function getCalendarClient() {
-  const credentials = {
-    client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-  };
-
-  const auth = new google.auth.JWT(
-    credentials.client_email,
-    undefined,
-    credentials.private_key,
-    ['https://www.googleapis.com/auth/calendar']
-  );
+  const auth = new google.auth.GoogleAuth({
+    credentials: {
+      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    },
+    scopes: ['https://www.googleapis.com/auth/calendar'],
+  });
 
   return google.calendar({ version: 'v3', auth });
 }
