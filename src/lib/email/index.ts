@@ -41,27 +41,25 @@ export async function sendReservationEmails(
   adminEmail?: string
 ) {
   const results = {
-    clientConfirmation: { success: false, error: null as any },
-    adminNotification: { success: false, error: null as any },
+    clientConfirmation: false,
+    adminNotification: false,
   };
 
   // Enviar confirmación al cliente
   try {
     const clientResult = await sendConfirmationEmail(reservationData);
-    results.clientConfirmation = clientResult;
+    results.clientConfirmation = clientResult.success;
   } catch (error) {
     console.error('Error enviando email al cliente:', error);
-    results.clientConfirmation.error = error;
   }
 
   // Enviar notificación al admin
   if (adminEmail) {
     try {
       const adminResult = await sendAdminNotification(reservationData, adminEmail);
-      results.adminNotification = adminResult;
+      results.adminNotification = adminResult.success;
     } catch (error) {
       console.error('Error enviando email al admin:', error);
-      results.adminNotification.error = error;
     }
   }
 
