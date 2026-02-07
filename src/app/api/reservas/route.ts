@@ -34,6 +34,9 @@ export async function POST(request: NextRequest) {
     const clienteTelefono = body.cliente_telefono || body.clienteTelefono;
     const notas = body.notas;
 
+    console.log('=== NUEVA RESERVA ===');
+    console.log('Cliente:', clienteNombre, clienteEmail);
+
     if (!servicioId || !barberoId || !fecha || !hora) {
       return NextResponse.json({ error: 'Faltan datos de la reserva' }, { status: 400 });
     }
@@ -154,8 +157,10 @@ export async function POST(request: NextRequest) {
     const config: Record<string, string> = {};
     configRows?.forEach(row => { config[row.clave] = row.valor; });
 
-    // Enviar emails (async, no bloqueante)
-    sendReservationEmails({
+    console.log('Config email admin:', config.email);
+
+    // Preparar datos para email
+    const emailData = {
       clienteNombre: clienteNombre.trim(),
       clienteEmail: clienteEmail.trim(),
       servicioNombre: servicio.nombre,
@@ -166,7 +171,16 @@ export async function POST(request: NextRequest) {
       nombreBarberia: config.nombre_barberia || 'Studio 1994 by Dago',
       direccion: config.direccion,
       telefono: config.telefono,
-    }, config.email).catch(err => console.error('Error enviando emails:', err));
+    };
+
+    // IMPORTANTE: Enviar emails y ESPERAR el resultado
+    try {
+      const emailResults = await sendReservationEmails(emailData, config.email);
+      console.log('Emails enviados:', emailResults);
+    } catch (emailError) {
+      console.error('Error enviando emails:', emailError);
+      // No fallar la reserva si falla el email
+    }
 
     return NextResponse.json({ success: true, data: reserva });
   } catch (error) {
