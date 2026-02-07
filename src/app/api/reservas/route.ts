@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import { sendReservationEmails, formatearFechaEmail } from '@/lib/email';
-import { sendReservationWhatsApp, isTwilioConfigured } from '@/lib/whatsapp';
+import { addReservationToCalendar, isGoogleCalendarConfigured } from '@/lib/calendar';
 
 function horaAMinutos(hora: string): number {
   const parts = hora.split(':');
@@ -36,7 +36,6 @@ export async function POST(request: NextRequest) {
     const notas = body.notas;
 
     console.log('=== NUEVA RESERVA ===');
-    console.log('Cliente:', clienteNombre, clienteEmail, clienteTelefono);
 
     if (!servicioId || !barberoId || !fecha || !hora) {
       return NextResponse.json({ error: 'Faltan datos de la reserva' }, { status: 400 });
@@ -153,14 +152,14 @@ export async function POST(request: NextRequest) {
     const { data: configRows } = await supabase
       .from('configuracion')
       .select('clave, valor')
-      .in('clave', ['nombre_barberia', 'direccion', 'telefono', 'email', 'whatsapp_admin']);
+      .in('clave', ['nombre_barberia', 'direccion', 'telefono', 'email']);
 
     const config: Record<string, string> = {};
     configRows?.forEach(row => { config[row.clave] = row.valor; });
 
     const fechaFormateada = formatearFechaEmail(fecha);
 
-    // Datos comunes para notificaciones
+    // Datos para notificaciones
     const notificationData = {
       clienteNombre: clienteNombre.trim(),
       clienteEmail: clienteEmail.trim(),
@@ -175,7 +174,7 @@ export async function POST(request: NextRequest) {
       telefono: config.telefono,
     };
 
-    // Enviar emails
+    // 1. Enviar emails
     try {
       const emailResults = await sendReservationEmails(notificationData, config.email);
       console.log('Emails enviados:', emailResults);
@@ -183,13 +182,35 @@ export async function POST(request: NextRequest) {
       console.error('Error enviando emails:', emailError);
     }
 
-    // Enviar WhatsApp (si está configurado)
-    if (isTwilioConfigured()) {
+    // 2. Agregar a Google Calendar (si está configurado)
+    if (isGoogleCalendarConfigured()) {
       try {
-        const whatsappResults = await sendReservationWhatsApp(notificationData, config.whatsapp_admin);
-        console.log('WhatsApp enviados:', whatsappResults);
-      } catch (whatsappError) {
-        console.error('Error enviando WhatsApp:', whatsappError);
+        const calendarResult = await addReservationToCalendar({
+          reservaId: reserva.id,
+          clienteNombre: clienteNombre.trim(),
+          clienteEmail: clienteEmail.trim(),
+          clienteTelefono: telefonoLimpio,
+          servicioNombre: servicio.nombre,
+          servicioPrecio: servicio.precio,
+          barberoNombre: barbero.nombre,
+          fecha: fecha,
+          horaInicio: hora,
+          horaFin: horaFin,
+          nombreBarberia: config.nombre_barberia || 'Studio 1994 by Dago',
+          direccion: config.direccion,
+        });
+
+        console.log('Google Calendar:', calendarResult);
+
+        // Guardar el ID del evento en la reserva
+        if (calendarResult.success && calendarResult.eventId) {
+          await supabase
+            .from('reservas')
+            .update({ google_calendar_event_id: calendarResult.eventId })
+            .eq('id', reserva.id);
+        }
+      } catch (calendarError) {
+        console.error('Error con Google Calendar:', calendarError);
       }
     }
 
