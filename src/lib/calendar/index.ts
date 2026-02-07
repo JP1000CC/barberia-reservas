@@ -1,105 +1,75 @@
-import {
-  createCalendarEvent,
-  updateCalendarEvent,
-  deleteCalendarEvent,
-  isGoogleCalendarConfigured,
-  type CalendarEventData,
-} from './google';
+import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from './google';
 
-export {
-  createCalendarEvent,
-  updateCalendarEvent,
-  deleteCalendarEvent,
-  isGoogleCalendarConfigured,
-  type CalendarEventData,
-};
-
+// Datos necesarios para crear un evento de reserva
 export interface ReservationCalendarData {
-  reservaId: string;
   clienteNombre: string;
-  clienteEmail: string;
   clienteTelefono: string;
+  clienteEmail?: string;
   servicioNombre: string;
-  servicioPrecio: number;
   barberoNombre: string;
-  fecha: string; // YYYY-MM-DD
-  horaInicio: string; // HH:MM
-  horaFin: string; // HH:MM
-  nombreBarberia: string;
-  direccion?: string;
+  fecha: string; // formato YYYY-MM-DD
+  hora: string; // formato HH:MM
+  duracionMinutos: number;
+  notas?: string;
 }
 
-// Crear evento de reserva en Google Calendar
-export async function addReservationToCalendar(data: ReservationCalendarData): Promise<{ success: boolean; eventId?: string }> {
-  if (!isGoogleCalendarConfigured()) {
-    console.log('Google Calendar no configurado');
-    return { success: false };
-  }
+// Agregar una reserva al calendario
+export async function addReservationToCalendar(data: ReservationCalendarData) {
+  // Crear fecha de inicio
+  const [year, month, day] = data.fecha.split('-').map(Number);
+  const [hours, minutes] = data.hora.split(':').map(Number);
 
-  // Construir fechas ISO
-  const fechaInicio = `${data.fecha}T${data.horaInicio}:00`;
-  const fechaFin = `${data.fecha}T${data.horaFin}:00`;
+  const fechaInicio = new Date(year, month - 1, day, hours, minutes);
+  const fechaFin = new Date(fechaInicio.getTime() + data.duracionMinutos * 60000);
 
-  const eventData: CalendarEventData = {
+  const eventData = {
     titulo: `💈 ${data.clienteNombre} - ${data.servicioNombre}`,
-    descripcion: `📋 Reserva en ${data.nombreBarberia}
-
-👤 Cliente: ${data.clienteNombre}
-📧 Email: ${data.clienteEmail}
+    descripcion: `
 📱 Teléfono: ${data.clienteTelefono}
-
+${data.clienteEmail ? `📧 Email: ${data.clienteEmail}` : ''}
 ✂️ Servicio: ${data.servicioNombre}
-👨‍🦱 Barbero: ${data.barberoNombre}
-💰 Precio: ${data.servicioPrecio} €
-
-🔖 ID Reserva: ${data.reservaId}`,
+👤 Barbero: ${data.barberoNombre}
+⏱️ Duración: ${data.duracionMinutos} minutos
+${data.notas ? `📝 Notas: ${data.notas}` : ''}
+    `.trim(),
     fechaInicio,
     fechaFin,
-    ubicacion: data.direccion,
-    clienteEmail: data.clienteEmail,
+    ubicacion: 'Studio 1994 by Dago',
   };
 
-  const result = await createCalendarEvent(eventData);
-  return { success: result.success, eventId: result.eventId };
+  console.log('Agregando reserva al calendario:', eventData);
+
+  return await createCalendarEvent(eventData);
 }
 
-// Cancelar reserva en Google Calendar
-export async function cancelReservationInCalendar(eventId: string): Promise<boolean> {
-  if (!eventId || !isGoogleCalendarConfigured()) {
-    return false;
-  }
-
-  const result = await deleteCalendarEvent(eventId);
-  return result.success;
-}
-
-// Actualizar reserva en Google Calendar
+// Actualizar una reserva en el calendario
 export async function updateReservationInCalendar(
   eventId: string,
   data: Partial<ReservationCalendarData>
-): Promise<boolean> {
-  if (!eventId || !isGoogleCalendarConfigured()) {
-    return false;
-  }
-
-  const updateData: Partial<CalendarEventData> = {};
+) {
+  const updateData: {
+    titulo?: string;
+    descripcion?: string;
+    fechaInicio?: Date;
+    fechaFin?: Date;
+  } = {};
 
   if (data.clienteNombre && data.servicioNombre) {
     updateData.titulo = `💈 ${data.clienteNombre} - ${data.servicioNombre}`;
   }
 
-  if (data.fecha && data.horaInicio) {
-    updateData.fechaInicio = `${data.fecha}T${data.horaInicio}:00`;
+  if (data.fecha && data.hora && data.duracionMinutos) {
+    const [year, month, day] = data.fecha.split('-').map(Number);
+    const [hours, minutes] = data.hora.split(':').map(Number);
+
+    updateData.fechaInicio = new Date(year, month - 1, day, hours, minutes);
+    updateData.fechaFin = new Date(updateData.fechaInicio.getTime() + data.duracionMinutos * 60000);
   }
 
-  if (data.fecha && data.horaFin) {
-    updateData.fechaFin = `${data.fecha}T${data.horaFin}:00`;
-  }
+  return await updateCalendarEvent(eventId, updateData);
+}
 
-  if (data.direccion) {
-    updateData.ubicacion = data.direccion;
-  }
-
-  const result = await updateCalendarEvent(eventId, updateData);
-  return result.success;
+// Eliminar una reserva del calendario
+export async function removeReservationFromCalendar(eventId: string) {
+  return await deleteCalendarEvent(eventId);
 }

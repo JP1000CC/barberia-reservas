@@ -1,174 +1,154 @@
 import { google } from 'googleapis';
 
-// Configuración de Google Calendar
-const SCOPES = ['https://www.googleapis.com/auth/calendar'];
-
-// Inicializar cliente de Google
-function getGoogleAuth() {
-  const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-
-  if (!credentials) {
-    console.log('Google Calendar no configurado: falta GOOGLE_SERVICE_ACCOUNT_KEY');
-    return null;
-  }
-
-  try {
-    const parsedCredentials = JSON.parse(credentials);
-
-    const auth = new google.auth.GoogleAuth({
-      credentials: parsedCredentials,
-      scopes: SCOPES,
-    });
-
-    return auth;
-  } catch (error) {
-    console.error('Error parseando credenciales de Google:', error);
-    return null;
-  }
-}
-
-// Obtener cliente de Calendar
-async function getCalendarClient() {
-  const auth = getGoogleAuth();
-  if (!auth) return null;
-
-  const calendar = google.calendar({ version: 'v3', auth });
-  return calendar;
-}
-
-// Verificar si Google Calendar está configurado
-export function isGoogleCalendarConfigured(): boolean {
-  return !!(process.env.GOOGLE_SERVICE_ACCOUNT_KEY && process.env.GOOGLE_CALENDAR_ID);
-}
-
+// Tipos para los eventos del calendario
 export interface CalendarEventData {
   titulo: string;
   descripcion: string;
-  fechaInicio: string; // formato ISO: 2024-02-09T10:00:00
-  fechaFin: string;
+  fechaInicio: Date;
+  fechaFin: Date;
   ubicacion?: string;
-  clienteEmail?: string;
 }
 
-// Crear evento en Google Calendar
-export async function createCalendarEvent(eventData: CalendarEventData): Promise<{ success: boolean; eventId?: string; error?: any }> {
-  if (!isGoogleCalendarConfigured()) {
-    console.log('Google Calendar no configurado, saltando creación de evento');
-    return { success: false, error: 'No configurado' };
-  }
+// Configurar el cliente de Google Calendar con Service Account
+async function getCalendarClient() {
+  const credentials = {
+    client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  };
 
+  const auth = new google.auth.JWT(
+    credentials.client_email,
+    undefined,
+    credentials.private_key,
+    ['https://www.googleapis.com/auth/calendar']
+  );
+
+  return google.calendar({ version: 'v3', auth });
+}
+
+// Crear un evento en el calendario
+export async function createCalendarEvent(eventData: CalendarEventData): Promise<{ success: boolean; eventId?: string; error?: string }> {
   try {
     const calendar = await getCalendarClient();
-    if (!calendar) {
-      return { success: false, error: 'No se pudo inicializar el cliente' };
-    }
-
     const calendarId = process.env.GOOGLE_CALENDAR_ID;
+
+    if (!calendarId) {
+      console.error('GOOGLE_CALENDAR_ID no está configurado');
+      return { success: false, error: 'Calendar ID no configurado' };
+    }
 
     const event = {
       summary: eventData.titulo,
       description: eventData.descripcion,
-      location: eventData.ubicacion,
+      location: eventData.ubicacion || '',
       start: {
-        dateTime: eventData.fechaInicio,
+        dateTime: eventData.fechaInicio.toISOString(),
         timeZone: 'Europe/Madrid',
       },
       end: {
-        dateTime: eventData.fechaFin,
+        dateTime: eventData.fechaFin.toISOString(),
         timeZone: 'Europe/Madrid',
       },
-      // Opcional: enviar invitación al cliente
-      ...(eventData.clienteEmail && {
-        attendees: [{ email: eventData.clienteEmail }],
-        sendUpdates: 'all',
-      }),
       reminders: {
         useDefault: false,
         overrides: [
-          { method: 'popup', minutes: 60 }, // 1 hora antes
-          { method: 'popup', minutes: 15 }, // 15 min antes
+          { method: 'popup', minutes: 60 },
+          { method: 'popup', minutes: 15 },
         ],
       },
     };
 
+    console.log('Intentando crear evento en calendario:', calendarId);
+    console.log('Datos del evento:', JSON.stringify(event, null, 2));
+
     const response = await calendar.events.insert({
-      calendarId,
+      calendarId: calendarId,
       requestBody: event,
     });
 
-    console.log('Evento creado en Google Calendar:', response.data.id);
-    return { success: true, eventId: response.data.id || undefined };
-  } catch (error: any) {
-    console.error('Error creando evento en Google Calendar:', error.message);
-    return { success: false, error: error.message };
+    console.log('Evento creado exitosamente:', response.data.id);
+
+    return {
+      success: true,
+      eventId: response.data.id || undefined,
+    };
+  } catch (error) {
+    console.error('Error al crear evento en Google Calendar:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    };
   }
 }
 
-// Actualizar evento en Google Calendar
+// Actualizar un evento existente
 export async function updateCalendarEvent(
   eventId: string,
   eventData: Partial<CalendarEventData>
-): Promise<{ success: boolean; error?: any }> {
-  if (!isGoogleCalendarConfigured()) {
-    return { success: false, error: 'No configurado' };
-  }
-
+): Promise<{ success: boolean; error?: string }> {
   try {
     const calendar = await getCalendarClient();
-    if (!calendar) {
-      return { success: false, error: 'No se pudo inicializar el cliente' };
-    }
-
     const calendarId = process.env.GOOGLE_CALENDAR_ID;
 
-    const updateData: any = {};
+    if (!calendarId) {
+      return { success: false, error: 'Calendar ID no configurado' };
+    }
+
+    const updateData: Record<string, unknown> = {};
+
     if (eventData.titulo) updateData.summary = eventData.titulo;
     if (eventData.descripcion) updateData.description = eventData.descripcion;
     if (eventData.ubicacion) updateData.location = eventData.ubicacion;
     if (eventData.fechaInicio) {
-      updateData.start = { dateTime: eventData.fechaInicio, timeZone: 'Europe/Madrid' };
+      updateData.start = {
+        dateTime: eventData.fechaInicio.toISOString(),
+        timeZone: 'Europe/Madrid',
+      };
     }
     if (eventData.fechaFin) {
-      updateData.end = { dateTime: eventData.fechaFin, timeZone: 'Europe/Madrid' };
+      updateData.end = {
+        dateTime: eventData.fechaFin.toISOString(),
+        timeZone: 'Europe/Madrid',
+      };
     }
 
     await calendar.events.patch({
-      calendarId,
-      eventId,
+      calendarId: calendarId,
+      eventId: eventId,
       requestBody: updateData,
     });
 
-    console.log('Evento actualizado en Google Calendar:', eventId);
     return { success: true };
-  } catch (error: any) {
-    console.error('Error actualizando evento:', error.message);
-    return { success: false, error: error.message };
+  } catch (error) {
+    console.error('Error al actualizar evento:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    };
   }
 }
 
-// Eliminar evento de Google Calendar
-export async function deleteCalendarEvent(eventId: string): Promise<{ success: boolean; error?: any }> {
-  if (!isGoogleCalendarConfigured()) {
-    return { success: false, error: 'No configurado' };
-  }
-
+// Eliminar un evento del calendario
+export async function deleteCalendarEvent(eventId: string): Promise<{ success: boolean; error?: string }> {
   try {
     const calendar = await getCalendarClient();
-    if (!calendar) {
-      return { success: false, error: 'No se pudo inicializar el cliente' };
-    }
-
     const calendarId = process.env.GOOGLE_CALENDAR_ID;
 
+    if (!calendarId) {
+      return { success: false, error: 'Calendar ID no configurado' };
+    }
+
     await calendar.events.delete({
-      calendarId,
-      eventId,
+      calendarId: calendarId,
+      eventId: eventId,
     });
 
-    console.log('Evento eliminado de Google Calendar:', eventId);
     return { success: true };
-  } catch (error: any) {
-    console.error('Error eliminando evento:', error.message);
-    return { success: false, error: error.message };
+  } catch (error) {
+    console.error('Error al eliminar evento:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    };
   }
 }

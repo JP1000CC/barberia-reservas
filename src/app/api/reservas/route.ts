@@ -1,253 +1,250 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminSupabaseClient } from '@/lib/supabase/server';
-import { sendReservationEmails, formatearFechaEmail } from '@/lib/email';
-import { addReservationToCalendar, isGoogleCalendarConfigured } from '@/lib/calendar';
+import { createClient } from '@/lib/supabase/server';
+import { sendReservationEmails } from '@/lib/email';
+import { addReservationToCalendar } from '@/lib/calendar';
 
-function horaAMinutos(hora: string): number {
-  const parts = hora.split(':');
-  return parseInt(parts[0]) * 60 + parseInt(parts[1] || '0');
-}
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { searchParams } = new URL(request.url);
 
-function minutosAHora(minutos: number): string {
-  const h = Math.floor(minutos / 60);
-  const m = minutos % 60;
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-}
+    const fecha = searchParams.get('fecha');
+    const barberoId = searchParams.get('barbero_id');
+    const estado = searchParams.get('estado');
 
-function validarEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+    let query = supabase
+      .from('reservas')
+      .select(`
+        *,
+        cliente:clientes(*),
+        servicio:servicios(*),
+        barbero:barberos(*)
+      `)
+      .order('fecha', { ascending: true })
+      .order('hora', { ascending: true });
 
-function validarTelefono(telefono: string): boolean {
-  const limpio = telefono.replace(/[\s\-]/g, '');
-  return /^[6-9]\d{8}$/.test(limpio) || /^\+34[6-9]\d{8}$/.test(limpio) || /^34[6-9]\d{8}$/.test(limpio);
+    if (fecha) {
+      query = query.eq('fecha', fecha);
+    }
+    if (barberoId) {
+      query = query.eq('barbero_id', barberoId);
+    }
+    if (estado) {
+      query = query.eq('estado', estado);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error al obtener reservas:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error en GET /api/reservas:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
     const body = await request.json();
-    const servicioId = body.servicio_id || body.servicioId;
-    const barberoId = body.barbero_id || body.barberoId;
-    const fecha = body.fecha;
-    const hora = body.hora;
-    const clienteNombre = body.cliente_nombre || body.clienteNombre;
-    const clienteEmail = body.cliente_email || body.clienteEmail;
-    const clienteTelefono = body.cliente_telefono || body.clienteTelefono;
-    const notas = body.notas;
 
-    console.log('=== NUEVA RESERVA ===');
+    const {
+      cliente_nombre,
+      cliente_email,
+      cliente_telefono,
+      servicio_id,
+      barbero_id,
+      fecha,
+      hora,
+      notas
+    } = body;
 
-    if (!servicioId || !barberoId || !fecha || !hora) {
-      return NextResponse.json({ error: 'Faltan datos de la reserva' }, { status: 400 });
+    // Validaciones básicas
+    if (!cliente_nombre || !cliente_email || !cliente_telefono || !servicio_id || !barbero_id || !fecha || !hora) {
+      return NextResponse.json(
+        { error: 'Faltan campos requeridos' },
+        { status: 400 }
+      );
     }
 
-    if (!clienteNombre || clienteNombre.trim().length < 2) {
-      return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 });
+    // Validar formato de teléfono español
+    const telefonoRegex = /^[6-9]\d{8}$/;
+    if (!telefonoRegex.test(cliente_telefono)) {
+      return NextResponse.json(
+        { error: 'Teléfono inválido. Debe ser un número español de 9 dígitos' },
+        { status: 400 }
+      );
     }
-
-    if (!clienteEmail || !validarEmail(clienteEmail)) {
-      return NextResponse.json({ error: 'Email inválido' }, { status: 400 });
-    }
-
-    if (!clienteTelefono || !validarTelefono(clienteTelefono)) {
-      return NextResponse.json({ error: 'Teléfono inválido' }, { status: 400 });
-    }
-
-    const supabase = createAdminSupabaseClient();
-
-    const { data: servicio, error: servicioError } = await supabase
-      .from('servicios')
-      .select('id, nombre, duracion_minutos, precio')
-      .eq('id', servicioId)
-      .single();
-
-    if (servicioError || !servicio) {
-      return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 });
-    }
-
-    const { data: barbero, error: barberoError } = await supabase
-      .from('barberos')
-      .select('id, nombre')
-      .eq('id', barberoId)
-      .single();
-
-    if (barberoError || !barbero) {
-      return NextResponse.json({ error: 'Barbero no encontrado' }, { status: 404 });
-    }
-
-    const horaInicioMinutos = horaAMinutos(hora);
-    const horaFin = minutosAHora(horaInicioMinutos + servicio.duracion_minutos);
 
     // Verificar disponibilidad
-    const { data: reservasExistentes } = await supabase
+    const { data: existingReservation, error: checkError } = await supabase
       .from('reservas')
-      .select('hora_inicio, hora_fin')
-      .eq('barbero_id', barberoId)
+      .select('id')
+      .eq('barbero_id', barbero_id)
       .eq('fecha', fecha)
-      .not('estado', 'in', '("cancelada","no_asistio")');
+      .eq('hora', hora)
+      .neq('estado', 'cancelada')
+      .single();
 
-    if (reservasExistentes) {
-      for (const reserva of reservasExistentes) {
-        const reservaInicio = horaAMinutos(reserva.hora_inicio.toString().slice(0, 5));
-        const reservaFin = horaAMinutos(reserva.hora_fin.toString().slice(0, 5));
-        if (horaInicioMinutos < reservaFin && (horaInicioMinutos + servicio.duracion_minutos) > reservaInicio) {
-          return NextResponse.json({ error: 'Horario no disponible' }, { status: 409 });
-        }
-      }
+    if (existingReservation) {
+      return NextResponse.json(
+        { error: 'Este horario ya no está disponible' },
+        { status: 409 }
+      );
     }
-
-    const telefonoLimpio = clienteTelefono.replace(/[\s\-]/g, '');
 
     // Buscar o crear cliente
-    let clienteId = null;
-    const { data: clienteExistente } = await supabase
+    let clienteId;
+    const { data: existingCliente } = await supabase
       .from('clientes')
       .select('id')
-      .or(`telefono.eq.${telefonoLimpio},email.eq.${clienteEmail}`)
-      .maybeSingle();
+      .eq('telefono', cliente_telefono)
+      .single();
 
-    if (clienteExistente) {
-      clienteId = clienteExistente.id;
-      await supabase.from('clientes').update({
-        nombre: clienteNombre.trim(),
-        email: clienteEmail.trim(),
-        telefono: telefonoLimpio,
-      }).eq('id', clienteId);
-    } else {
-      const { data: nuevoCliente } = await supabase
+    if (existingCliente) {
+      clienteId = existingCliente.id;
+      // Actualizar email si cambió
+      await supabase
         .from('clientes')
-        .insert({ nombre: clienteNombre.trim(), email: clienteEmail.trim(), telefono: telefonoLimpio })
+        .update({ email: cliente_email, nombre: cliente_nombre })
+        .eq('id', clienteId);
+    } else {
+      const { data: newCliente, error: clienteError } = await supabase
+        .from('clientes')
+        .insert({
+          nombre: cliente_nombre,
+          email: cliente_email,
+          telefono: cliente_telefono
+        })
         .select('id')
         .single();
-      if (nuevoCliente) clienteId = nuevoCliente.id;
+
+      if (clienteError) {
+        console.error('Error al crear cliente:', clienteError);
+        return NextResponse.json(
+          { error: 'Error al registrar cliente' },
+          { status: 500 }
+        );
+      }
+      clienteId = newCliente.id;
     }
 
-    // Crear reserva
+    // Obtener información del servicio y barbero para el email
+    const { data: servicio } = await supabase
+      .from('servicios')
+      .select('nombre, precio, duracion_minutos')
+      .eq('id', servicio_id)
+      .single();
+
+    const { data: barbero } = await supabase
+      .from('barberos')
+      .select('nombre')
+      .eq('id', barbero_id)
+      .single();
+
+    if (!servicio || !barbero) {
+      return NextResponse.json(
+        { error: 'Servicio o barbero no encontrado' },
+        { status: 400 }
+      );
+    }
+
+    // Crear la reserva
     const { data: reserva, error: reservaError } = await supabase
       .from('reservas')
       .insert({
         cliente_id: clienteId,
-        barbero_id: barberoId,
-        servicio_id: servicioId,
+        servicio_id,
+        barbero_id,
         fecha,
-        hora_inicio: hora,
-        hora_fin: horaFin,
-        cliente_nombre: clienteNombre.trim(),
-        cliente_email: clienteEmail.trim(),
-        cliente_telefono: telefonoLimpio,
-        servicio_nombre: servicio.nombre,
-        servicio_precio: servicio.precio,
-        estado: 'pendiente',
+        hora,
         notas: notas || null,
+        estado: 'confirmada'
       })
       .select()
       .single();
 
     if (reservaError) {
-      console.error('Error creando reserva:', reservaError);
-      return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 });
+      console.error('Error al crear reserva:', reservaError);
+      return NextResponse.json(
+        { error: 'Error al crear la reserva' },
+        { status: 500 }
+      );
     }
 
-    // Obtener configuración
-    const { data: configRows } = await supabase
-      .from('configuracion')
-      .select('clave, valor')
-      .in('clave', ['nombre_barberia', 'direccion', 'telefono', 'email']);
-
-    const config: Record<string, string> = {};
-    configRows?.forEach(row => { config[row.clave] = row.valor; });
-
-    const fechaFormateada = formatearFechaEmail(fecha);
-
-    // Datos para notificaciones
-    const notificationData = {
-      clienteNombre: clienteNombre.trim(),
-      clienteEmail: clienteEmail.trim(),
-      clienteTelefono: telefonoLimpio,
+    // Preparar datos para email y calendario
+    const reservationData = {
+      clienteNombre: cliente_nombre,
+      clienteEmail: cliente_email,
+      clienteTelefono: cliente_telefono,
       servicioNombre: servicio.nombre,
       servicioPrecio: servicio.precio,
       barberoNombre: barbero.nombre,
-      fecha: fechaFormateada,
-      hora: hora,
-      nombreBarberia: config.nombre_barberia || 'Studio 1994 by Dago',
-      direccion: config.direccion,
-      telefono: config.telefono,
+      fecha,
+      hora,
+      duracionMinutos: servicio.duracion_minutos,
+      notas
     };
 
-    // 1. Enviar emails
+    // Enviar emails (cliente + admin)
+    const adminEmail = process.env.ADMIN_EMAIL;
     try {
-      const emailResults = await sendReservationEmails(notificationData, config.email);
+      const emailResults = await sendReservationEmails(reservationData, adminEmail);
       console.log('Emails enviados:', emailResults);
     } catch (emailError) {
-      console.error('Error enviando emails:', emailError);
+      console.error('Error al enviar emails:', emailError);
+      // No fallar la reserva si el email falla
     }
 
-    // 2. Agregar a Google Calendar (si está configurado)
-    if (isGoogleCalendarConfigured()) {
-      try {
-        const calendarResult = await addReservationToCalendar({
-          reservaId: reserva.id,
-          clienteNombre: clienteNombre.trim(),
-          clienteEmail: clienteEmail.trim(),
-          clienteTelefono: telefonoLimpio,
-          servicioNombre: servicio.nombre,
-          servicioPrecio: servicio.precio,
-          barberoNombre: barbero.nombre,
-          fecha: fecha,
-          horaInicio: hora,
-          horaFin: horaFin,
-          nombreBarberia: config.nombre_barberia || 'Studio 1994 by Dago',
-          direccion: config.direccion,
-        });
+    // Agregar al calendario de Google
+    try {
+      const calendarResult = await addReservationToCalendar({
+        clienteNombre: cliente_nombre,
+        clienteTelefono: cliente_telefono,
+        clienteEmail: cliente_email,
+        servicioNombre: servicio.nombre,
+        barberoNombre: barbero.nombre,
+        fecha,
+        hora,
+        duracionMinutos: servicio.duracion_minutos,
+        notas
+      });
 
-        console.log('Google Calendar:', calendarResult);
+      console.log('Resultado calendario:', calendarResult);
 
-        // Guardar el ID del evento en la reserva
-        if (calendarResult.success && calendarResult.eventId) {
-          await supabase
-            .from('reservas')
-            .update({ google_calendar_event_id: calendarResult.eventId })
-            .eq('id', reserva.id);
-        }
-      } catch (calendarError) {
-        console.error('Error con Google Calendar:', calendarError);
+      // Guardar el ID del evento en la reserva si se creó exitosamente
+      if (calendarResult.success && calendarResult.eventId) {
+        await supabase
+          .from('reservas')
+          .update({ google_calendar_event_id: calendarResult.eventId })
+          .eq('id', reserva.id);
       }
+    } catch (calendarError) {
+      console.error('Error al agregar al calendario:', calendarError);
+      // No fallar la reserva si el calendario falla
     }
 
-    return NextResponse.json({ success: true, data: reserva });
+    return NextResponse.json({
+      success: true,
+      reserva: {
+        ...reserva,
+        servicio,
+        barbero: { nombre: barbero.nombre }
+      }
+    }, { status: 201 });
+
   } catch (error) {
-    console.error('Error en reservas POST:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const fecha = searchParams.get('fecha');
-    const barberoId = searchParams.get('barbero_id');
-    const estado = searchParams.get('estado');
-
-    const supabase = createAdminSupabaseClient();
-
-    let query = supabase
-      .from('reservas')
-      .select('*, barbero:barberos(id, nombre, color), servicio:servicios(id, nombre)')
-      .order('fecha', { ascending: true })
-      .order('hora_inicio', { ascending: true });
-
-    if (fecha) query = query.eq('fecha', fecha);
-    if (barberoId) query = query.eq('barbero_id', barberoId);
-    if (estado) query = query.eq('estado', estado);
-
-    const { data: reservas, error } = await query;
-
-    if (error) {
-      return NextResponse.json({ error: 'Error al obtener reservas' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, data: reservas });
-  } catch (error) {
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 });
+    console.error('Error en POST /api/reservas:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    );
   }
 }
