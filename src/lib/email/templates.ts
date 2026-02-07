@@ -33,19 +33,25 @@ const emailStyles = `
 `;
 
 export function getConfirmationEmailTemplate(data: ReservationEmailData): string {
-  return \`
-<!DOCTYPE html>
+  const direccionHtml = data.direccion
+    ? `<p style="color: #666;"><strong>📍 Dirección:</strong> ${data.direccion}</p>`
+    : '';
+
+  const footerDireccion = data.direccion ? `<p>📍 ${data.direccion}</p>` : '';
+  const footerTelefono = data.telefono ? `<p>📞 ${data.telefono}</p>` : '';
+
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Confirmación de Reserva</title>
-  <style>\${emailStyles}</style>
+  <style>${emailStyles}</style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>\${data.nombreBarberia}</h1>
+      <h1>${data.nombreBarberia}</h1>
       <p>Confirmación de Reserva</p>
     </div>
     <div class="content">
@@ -55,94 +61,92 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
         </div>
         <h2 style="color: #333; margin: 0;">¡Reserva Confirmada!</h2>
       </div>
-      <p class="greeting">Hola <strong>\${data.clienteNombre}</strong>,</p>
+      <p class="greeting">Hola <strong>${data.clienteNombre}</strong>,</p>
       <p style="color: #666; line-height: 1.6;">
         Tu cita ha sido reservada exitosamente. A continuación encontrarás los detalles:
       </p>
       <div class="details-card">
         <div class="detail-row">
           <span class="detail-label">Servicio</span>
-          <span class="detail-value">\${data.servicioNombre}</span>
+          <span class="detail-value">${data.servicioNombre}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Barbero</span>
-          <span class="detail-value">\${data.barberoNombre}</span>
+          <span class="detail-value">${data.barberoNombre}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Fecha</span>
-          <span class="detail-value">\${data.fecha}</span>
+          <span class="detail-value">${data.fecha}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Hora</span>
-          <span class="detail-value">\${data.hora}</span>
+          <span class="detail-value">${data.hora}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Total a pagar</span>
-          <span class="detail-value price">\${data.servicioPrecio} €</span>
+          <span class="detail-value price">${data.servicioPrecio} €</span>
         </div>
       </div>
-      \${data.direccion ? \`<p style="color: #666;"><strong>📍 Dirección:</strong> \${data.direccion}</p>\` : ''}
+      ${direccionHtml}
       <p style="color: #666; font-size: 14px;">
         Si necesitas cancelar o modificar tu reserva, contáctanos con al menos 2 horas de anticipación.
       </p>
     </div>
     <div class="footer">
-      <p><strong>\${data.nombreBarberia}</strong></p>
-      \${data.direccion ? \`<p>📍 \${data.direccion}</p>\` : ''}
-      \${data.telefono ? \`<p>📞 \${data.telefono}</p>\` : ''}
+      <p><strong>${data.nombreBarberia}</strong></p>
+      ${footerDireccion}
+      ${footerTelefono}
     </div>
   </div>
 </body>
-</html>
-\`;
+</html>`;
 }
 
 export function getAdminNotificationEmailTemplate(data: ReservationEmailData): string {
-  return \`
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nueva Reserva</title>
-  <style>\${emailStyles}</style>
+  <style>${emailStyles}</style>
 </head>
 <body>
   <div class="container">
     <div class="header">
       <h1>🗓️ Nueva Reserva</h1>
-      <p>\${data.nombreBarberia}</p>
+      <p>${data.nombreBarberia}</p>
     </div>
     <div class="content">
       <p class="greeting">¡Tienes una nueva reserva!</p>
       <div class="details-card">
         <div class="detail-row">
           <span class="detail-label">Cliente</span>
-          <span class="detail-value">\${data.clienteNombre}</span>
+          <span class="detail-value">${data.clienteNombre}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Email</span>
-          <span class="detail-value">\${data.clienteEmail}</span>
+          <span class="detail-value">${data.clienteEmail}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Servicio</span>
-          <span class="detail-value">\${data.servicioNombre}</span>
+          <span class="detail-value">${data.servicioNombre}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Barbero</span>
-          <span class="detail-value">\${data.barberoNombre}</span>
+          <span class="detail-value">${data.barberoNombre}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Fecha</span>
-          <span class="detail-value"><strong>\${data.fecha}</strong></span>
+          <span class="detail-value"><strong>${data.fecha}</strong></span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Hora</span>
-          <span class="detail-value"><strong>\${data.hora}</strong></span>
+          <span class="detail-value"><strong>${data.hora}</strong></span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Precio</span>
-          <span class="detail-value price">\${data.servicioPrecio} €</span>
+          <span class="detail-value price">${data.servicioPrecio} €</span>
         </div>
       </div>
     </div>
@@ -151,6 +155,5 @@ export function getAdminNotificationEmailTemplate(data: ReservationEmailData): s
     </div>
   </div>
 </body>
-</html>
-\`;
+</html>`;
 }
