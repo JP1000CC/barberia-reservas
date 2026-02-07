@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { sendReservationEmails } from '@/lib/email';
 import { addReservationToCalendar } from '@/lib/calendar';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createServerSupabaseClient();
     const { searchParams } = new URL(request.url);
 
     const fecha = searchParams.get('fecha');
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createServerSupabaseClient();
     const body = await request.json();
 
     const {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar disponibilidad
-    const { data: existingReservation, error: checkError } = await supabase
+    const { data: existingReservation } = await supabase
       .from('reservas')
       .select('id')
       .eq('barbero_id', barbero_id)
