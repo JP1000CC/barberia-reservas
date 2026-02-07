@@ -28,12 +28,10 @@ export async function GET(request: Request) {
     );
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
 
-  // Si hay error, redirigir a login con mensaje
   return NextResponse.redirect(`${origin}/admin/login?error=auth_error`);
 }

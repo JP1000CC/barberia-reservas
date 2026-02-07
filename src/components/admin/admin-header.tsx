@@ -27,15 +27,9 @@ export default function AdminHeader() {
 
   const handleLogout = async () => {
     setLoading(true);
-    try {
-      await supabase.auth.signOut();
-      router.push('/admin/login');
-      router.refresh();
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-    } finally {
-      setLoading(false);
-    }
+    await supabase.auth.signOut();
+    router.push('/admin/login');
+    router.refresh();
   };
 
   if (!user) return null;
@@ -51,10 +45,10 @@ export default function AdminHeader() {
         <button
           onClick={handleLogout}
           disabled={loading}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
         >
           <LogOut className="w-4 h-4" />
-          <span>{loading ? 'Saliendo...' : 'Cerrar sesión'}</span>
+          {loading ? 'Saliendo...' : 'Cerrar sesión'}
         </button>
       </div>
     </div>
