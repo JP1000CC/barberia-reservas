@@ -67,23 +67,23 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
       </p>
       <div class="details-card">
         <div class="detail-row">
-          <span class="detail-label">Servicio</span>
+          <span class="detail-label">Servicio: </span>
           <span class="detail-value">${data.servicioNombre}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Barbero</span>
+          <span class="detail-label">Barbero: </span>
           <span class="detail-value">${data.barberoNombre}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Fecha</span>
+          <span class="detail-label">Fecha: </span>
           <span class="detail-value">${data.fecha}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Hora</span>
+          <span class="detail-label">Hora: </span>
           <span class="detail-value">${data.hora}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Total a pagar</span>
+          <span class="detail-label">Total a pagar: </span>
           <span class="detail-value price">${data.servicioPrecio} €</span>
         </div>
       </div>
