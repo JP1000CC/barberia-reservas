@@ -143,7 +143,6 @@ export async function POST(request: NextRequest) {
 
     if (existingCliente) {
       clienteId = existingCliente.id;
-      // Actualizar datos del cliente si cambiaron
       await supabase
         .from('clientes')
         .update({ email: cliente_email, nombre: cliente_nombre })
@@ -169,7 +168,7 @@ export async function POST(request: NextRequest) {
       clienteId = newCliente.id;
     }
 
-    // Crear la reserva con la estructura correcta de la tabla
+    // Crear la reserva
     const { data: reserva, error: reservaError } = await supabase
       .from('reservas')
       .insert({
@@ -198,7 +197,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Preparar datos para email y calendario
+    // Datos para email y calendario
     const reservationData = {
       clienteNombre: cliente_nombre,
       clienteEmail: cliente_email,
@@ -212,7 +211,7 @@ export async function POST(request: NextRequest) {
       notas
     };
 
-    // Enviar emails (cliente + admin)
+    // Enviar emails
     const adminEmail = process.env.ADMIN_EMAIL;
     try {
       const emailResults = await sendReservationEmails(reservationData, adminEmail);
@@ -237,6 +236,7 @@ export async function POST(request: NextRequest) {
 
       console.log('Resultado calendario:', calendarResult);
 
+      // Guardar ID del evento si se creó
       if (calendarResult.success && calendarResult.eventId) {
         await supabase
           .from('reservas')
