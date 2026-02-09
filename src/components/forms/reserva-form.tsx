@@ -25,6 +25,7 @@ interface Config {
   nombre_barberia: string;
   moneda: string;
   duracion_slot: number;
+  dias_anticipacion_maxima: number;
 }
 
 interface ReservaFormProps {
@@ -60,10 +61,13 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
   const [submitting, setSubmitting] = useState(false);
   const [reservaExitosa, setReservaExitosa] = useState(false);
 
+  // Usar días de anticipación máxima de la configuración
+  const diasAnticipacion = config.dias_anticipacion_maxima || 14;
+
   const generateDates = () => {
     const dates: Date[] = [];
     const today = new Date();
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < diasAnticipacion; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       dates.push(date);

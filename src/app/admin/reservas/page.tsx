@@ -34,11 +34,18 @@ export default function ReservasPage() {
       const res = await fetch(url);
       const data = await res.json();
 
-      if (data.success) {
-        setReservas(data.data);
+      // El API devuelve un array directamente, no un objeto con success/data
+      if (Array.isArray(data)) {
+        setReservas(data);
+      } else if (data.error) {
+        toast.error(data.error);
+        setReservas([]);
+      } else {
+        setReservas([]);
       }
     } catch (error) {
       toast.error('Error al cargar reservas');
+      setReservas([]);
     } finally {
       setLoading(false);
     }

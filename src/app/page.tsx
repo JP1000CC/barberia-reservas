@@ -19,6 +19,7 @@ async function getConfiguracion() {
     nombre_barberia: config.nombre_barberia || 'Mi Barbería',
     moneda: config.moneda || 'EUR',
     duracion_slot: parseInt(config.intervalo_minutos || '30'),
+    dias_anticipacion_maxima: parseInt(config.dias_anticipacion_maxima || '14'),
   };
 }
 
