@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, createAdminSupabaseClient } from '@/lib/supabase/server';
 import { sendReservationEmails } from '@/lib/email';
 import { addReservationToCalendar } from '@/lib/calendar';
 
@@ -243,11 +243,12 @@ export async function POST(request: NextRequest) {
       console.log('Event ID:', calendarResult.eventId);
       console.log('Error:', calendarResult.error);
 
-      // Guardar ID del evento si se creó
+      // Guardar ID del evento si se creó (usar admin client para bypass RLS)
       if (calendarResult.success && calendarResult.eventId) {
         console.log('Guardando event ID en reserva:', reserva.id);
 
-        const { data: updateData, error: updateError } = await supabase
+        const adminSupabase = createAdminSupabaseClient();
+        const { data: updateData, error: updateError } = await adminSupabase
           .from('reservas')
           .update({ google_calendar_event_id: calendarResult.eventId })
           .eq('id', reserva.id)
