@@ -1,13 +1,19 @@
 import { sendEmail } from './resend';
-import { getConfirmationEmailTemplate, getAdminNotificationTemplate, ReservationEmailData } from './templates';
+import {
+  getConfirmationEmailTemplate,
+  getAdminNotificationTemplate,
+  getReminderEmailTemplate,
+  ReservationEmailData
+} from './templates';
 
 // Enviar email de confirmación al cliente
 export async function sendConfirmationEmail(data: ReservationEmailData): Promise<boolean> {
   const html = getConfirmationEmailTemplate(data);
+  const nombreNegocio = data.nombreNegocio || 'Studio 1994';
 
   const result = await sendEmail({
     to: data.clienteEmail,
-    subject: `Confirmacion de Reserva - ${data.servicioNombre}`,
+    subject: `✅ Confirmación de Cita - ${nombreNegocio}`,
     html,
   });
 
@@ -28,11 +34,25 @@ export async function sendAdminNotification(data: ReservationEmailData, adminEma
 
   const result = await sendEmail({
     to: adminEmail,
-    subject: `Nueva Reserva: ${data.clienteNombre} - ${data.servicioNombre}`,
+    subject: `📅 Nueva Reserva: ${data.clienteNombre} - ${data.servicioNombre}`,
     html,
   });
 
   console.log('Resultado envío admin:', result);
+  return result.success;
+}
+
+// Enviar email de recordatorio al cliente
+export async function sendReminderEmail(data: ReservationEmailData): Promise<boolean> {
+  const html = getReminderEmailTemplate(data);
+  const nombreNegocio = data.nombreNegocio || 'Studio 1994';
+
+  const result = await sendEmail({
+    to: data.clienteEmail,
+    subject: `⏰ Recordatorio: Tu cita es mañana - ${nombreNegocio}`,
+    html,
+  });
+
   return result.success;
 }
 
@@ -67,3 +87,4 @@ export async function sendReservationEmails(
 }
 
 export type { ReservationEmailData };
+export { getReminderEmailTemplate };

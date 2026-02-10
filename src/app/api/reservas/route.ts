@@ -220,7 +220,9 @@ export async function POST(request: NextRequest) {
       duracionMinutos: servicio.duracion_minutos,
       notas,
       ubicacion: config.direccion,
-      nombreNegocio: config.nombre_barberia
+      nombreNegocio: config.nombre_barberia,
+      telefonoNegocio: config.telefono,
+      reservaId: reserva.id
     };
 
     // Enviar emails
