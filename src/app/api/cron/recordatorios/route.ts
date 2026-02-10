@@ -2,18 +2,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import { sendReminderEmail } from '@/lib/email';
 
-// Verificar que la petición viene de Vercel Cron
+// Verificar que la petición viene de Vercel Cron o tiene el secreto correcto
 function isValidCronRequest(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
 
-  // Si no hay CRON_SECRET configurado, permitir en desarrollo
+  // Si no hay CRON_SECRET configurado, permitir (desarrollo)
   if (!cronSecret) {
     console.log('ADVERTENCIA: CRON_SECRET no configurado');
     return true;
   }
 
-  return authHeader === `Bearer ${cronSecret}`;
+  // Verificar header de autorización (Vercel Cron)
+  if (authHeader === `Bearer ${cronSecret}`) {
+    return true;
+  }
+
+  // Verificar parámetro en URL (para pruebas manuales)
+  const { searchParams } = new URL(request.url);
+  const secretParam = searchParams.get('secret');
+  if (secretParam === cronSecret) {
+    return true;
+  }
+
+  return false;
 }
 
 export async function GET(request: NextRequest) {
