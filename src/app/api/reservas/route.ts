@@ -238,14 +238,28 @@ export async function POST(request: NextRequest) {
         notas
       });
 
-      console.log('Resultado calendario:', calendarResult);
+      console.log('=== RESULTADO CALENDARIO ===');
+      console.log('Success:', calendarResult.success);
+      console.log('Event ID:', calendarResult.eventId);
+      console.log('Error:', calendarResult.error);
 
       // Guardar ID del evento si se creó
       if (calendarResult.success && calendarResult.eventId) {
-        await supabase
+        console.log('Guardando event ID en reserva:', reserva.id);
+
+        const { data: updateData, error: updateError } = await supabase
           .from('reservas')
           .update({ google_calendar_event_id: calendarResult.eventId })
-          .eq('id', reserva.id);
+          .eq('id', reserva.id)
+          .select();
+
+        if (updateError) {
+          console.error('ERROR al guardar event ID en Supabase:', updateError);
+        } else {
+          console.log('Event ID guardado correctamente:', updateData);
+        }
+      } else {
+        console.log('No se guardó event ID - success:', calendarResult.success, 'eventId:', calendarResult.eventId);
       }
     } catch (calendarError) {
       console.error('Error al agregar al calendario:', calendarError);
