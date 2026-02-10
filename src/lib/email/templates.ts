@@ -11,6 +11,29 @@ export interface ReservationEmailData {
   notas?: string;
 }
 
+// Generar enlace para agregar evento a Google Calendar
+function generateGoogleCalendarLink(data: ReservationEmailData): string {
+  const [year, month, day] = data.fecha.split('-').map(Number);
+  const [hours, minutes] = data.hora.split(':').map(Number);
+
+  // Crear fechas en formato YYYYMMDDTHHMMSS
+  const startDate = new Date(year, month - 1, day, hours, minutes);
+  const endDate = new Date(startDate.getTime() + data.duracionMinutos * 60000);
+
+  const formatDate = (d: Date) => {
+    return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  };
+
+  const title = encodeURIComponent(`Cita en Studio 1994 - ${data.servicioNombre}`);
+  const details = encodeURIComponent(
+    `Servicio: ${data.servicioNombre}\nBarbero: ${data.barberoNombre}\nDuración: ${data.duracionMinutos} minutos\nPrecio: ${data.servicioPrecio.toFixed(2)} EUR`
+  );
+  const location = encodeURIComponent('Studio 1994 by Dago');
+  const dates = `${formatDate(startDate)}/${formatDate(endDate)}`;
+
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&location=${location}`;
+}
+
 export function getConfirmationEmailTemplate(data: ReservationEmailData): string {
   const fechaFormateada = new Date(data.fecha).toLocaleDateString('es-ES', {
     weekday: 'long',
@@ -89,6 +112,16 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
                   </td>
                 </tr>
               </table>
+
+              <!-- Botón Agregar a Google Calendar -->
+              <div style="text-align: center; margin-bottom: 30px;">
+                <a href="${generateGoogleCalendarLink(data)}"
+                   target="_blank"
+                   style="display: inline-block; background-color: #4285f4; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">
+                  📅 Agregar a Google Calendar
+                </a>
+              </div>
+
               <p style="color: #666666; font-size: 14px; margin: 0 0 10px 0;">
                 Si necesitas cancelar o modificar tu cita, por favor contactanos con anticipacion.
               </p>
