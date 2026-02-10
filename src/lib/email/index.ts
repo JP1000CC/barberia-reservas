@@ -16,6 +16,14 @@ export async function sendConfirmationEmail(data: ReservationEmailData): Promise
 
 // Enviar notificación al administrador
 export async function sendAdminNotification(data: ReservationEmailData, adminEmail: string): Promise<boolean> {
+  console.log('=== ENVIANDO EMAIL ADMIN ===');
+  console.log('Admin email destino:', adminEmail);
+
+  if (!adminEmail) {
+    console.error('ERROR: adminEmail está vacío o undefined');
+    return false;
+  }
+
   const html = getAdminNotificationTemplate(data);
 
   const result = await sendEmail({
@@ -24,6 +32,7 @@ export async function sendAdminNotification(data: ReservationEmailData, adminEma
     html,
   });
 
+  console.log('Resultado envío admin:', result);
   return result.success;
 }
 

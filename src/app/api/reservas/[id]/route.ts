@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
+import { removeReservationFromCalendar } from '@/lib/calendar';
 
 export async function PATCH(
   request: NextRequest,
@@ -10,6 +11,18 @@ export async function PATCH(
     const { estado, notas } = body;
 
     const supabase = createAdminSupabaseClient();
+
+    // Si se va a cancelar, primero obtenemos el evento de calendar
+    let googleCalendarEventId: string | null = null;
+    if (estado === 'cancelada') {
+      const { data: reservaActual } = await supabase
+        .from('reservas')
+        .select('google_calendar_event_id')
+        .eq('id', params.id)
+        .single();
+
+      googleCalendarEventId = reservaActual?.google_calendar_event_id;
+    }
 
     const updateData: Record<string, any> = {};
 
@@ -41,6 +54,17 @@ export async function PATCH(
       );
     }
 
+    // Si se canceló y hay evento en Google Calendar, eliminarlo
+    if (estado === 'cancelada' && googleCalendarEventId) {
+      try {
+        const calendarResult = await removeReservationFromCalendar(googleCalendarEventId);
+        console.log('Evento eliminado del calendario:', calendarResult);
+      } catch (calendarError) {
+        console.error('Error al eliminar evento del calendario:', calendarError);
+        // No fallar la operación si el calendario falla
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: reserva,
@@ -61,6 +85,15 @@ export async function DELETE(
   try {
     const supabase = createAdminSupabaseClient();
 
+    // Primero obtener el evento de calendar antes de cancelar
+    const { data: reservaActual } = await supabase
+      .from('reservas')
+      .select('google_calendar_event_id')
+      .eq('id', params.id)
+      .single();
+
+    const googleCalendarEventId = reservaActual?.google_calendar_event_id;
+
     // Cambiar estado a cancelada en lugar de eliminar
     const { error } = await supabase
       .from('reservas')
@@ -76,6 +109,17 @@ export async function DELETE(
         { success: false, error: 'Error al cancelar la reserva' },
         { status: 500 }
       );
+    }
+
+    // Eliminar evento del calendario si existe
+    if (googleCalendarEventId) {
+      try {
+        const calendarResult = await removeReservationFromCalendar(googleCalendarEventId);
+        console.log('Evento eliminado del calendario:', calendarResult);
+      } catch (calendarError) {
+        console.error('Error al eliminar evento del calendario:', calendarError);
+        // No fallar la operación si el calendario falla
+      }
     }
 
     return NextResponse.json({

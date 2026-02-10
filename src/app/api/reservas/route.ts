@@ -213,6 +213,10 @@ export async function POST(request: NextRequest) {
 
     // Enviar emails
     const adminEmail = process.env.ADMIN_EMAIL;
+    console.log('=== CONFIGURACIÓN EMAILS ===');
+    console.log('ADMIN_EMAIL env:', adminEmail ? `configurado (${adminEmail})` : 'NO CONFIGURADO');
+    console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? 'configurado' : 'NO CONFIGURADO');
+
     try {
       const emailResults = await sendReservationEmails(reservationData, adminEmail);
       console.log('Emails enviados:', emailResults);
