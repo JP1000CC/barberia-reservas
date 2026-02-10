@@ -9,6 +9,8 @@ export interface ReservationEmailData {
   hora: string;
   duracionMinutos: number;
   notas?: string;
+  ubicacion?: string;
+  nombreNegocio?: string;
 }
 
 // Generar enlace para agregar evento a Google Calendar
@@ -24,11 +26,14 @@ function generateGoogleCalendarLink(data: ReservationEmailData): string {
     return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   };
 
-  const title = encodeURIComponent(`Cita en Studio 1994 - ${data.servicioNombre}`);
+  const nombreNegocio = data.nombreNegocio || 'Studio 1994';
+  const ubicacion = data.ubicacion || 'Studio 1994 by Dago';
+
+  const title = encodeURIComponent(`Cita en ${nombreNegocio} - ${data.servicioNombre}`);
   const details = encodeURIComponent(
     `Servicio: ${data.servicioNombre}\nBarbero: ${data.barberoNombre}\nDuración: ${data.duracionMinutos} minutos\nPrecio: ${data.servicioPrecio.toFixed(2)} EUR`
   );
-  const location = encodeURIComponent('Studio 1994 by Dago');
+  const location = encodeURIComponent(ubicacion);
   const dates = `${formatDate(startDate)}/${formatDate(endDate)}`;
 
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&location=${location}`;
@@ -41,6 +46,8 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
     month: 'long',
     day: 'numeric'
   });
+
+  const nombreNegocio = data.nombreNegocio || 'Studio 1994 by Dago';
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -56,7 +63,7 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
         <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
           <tr>
             <td style="background-color: #1a1a1a; padding: 30px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 28px;">Studio 1994 by Dago</h1>
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px;">${nombreNegocio}</h1>
               <p style="color: #cccccc; margin: 10px 0 0 0; font-size: 14px;">Confirmacion de Reserva</p>
             </td>
           </tr>
@@ -133,7 +140,7 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
           <tr>
             <td style="background-color: #f8f8f8; padding: 20px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
               <p style="color: #999999; font-size: 12px; margin: 0;">
-                Studio 1994 by Dago<br>
+                ${nombreNegocio}<br>
                 Este email fue enviado automaticamente, por favor no responder.
               </p>
             </td>

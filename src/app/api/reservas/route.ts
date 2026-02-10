@@ -112,6 +112,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Obtener configuración del negocio
+    const { data: configData } = await supabase
+      .from('configuracion')
+      .select('clave, valor');
+
+    const config: Record<string, string> = {};
+    configData?.forEach((item: { clave: string; valor: string }) => {
+      config[item.clave] = item.valor;
+    });
+
     // Calcular hora_fin
     const hora_inicio = hora;
     const hora_fin = calcularHoraFin(hora_inicio, servicio.duracion_minutos);
@@ -208,7 +218,9 @@ export async function POST(request: NextRequest) {
       fecha,
       hora: hora_inicio,
       duracionMinutos: servicio.duracion_minutos,
-      notas
+      notas,
+      ubicacion: config.direccion,
+      nombreNegocio: config.nombre_barberia
     };
 
     // Enviar emails
@@ -235,7 +247,9 @@ export async function POST(request: NextRequest) {
         fecha,
         hora: hora_inicio,
         duracionMinutos: servicio.duracion_minutos,
-        notas
+        notas,
+        ubicacion: config.direccion,
+        nombreNegocio: config.nombre_barberia
       });
 
       console.log('=== RESULTADO CALENDARIO ===');

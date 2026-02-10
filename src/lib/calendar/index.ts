@@ -10,6 +10,8 @@ export interface ReservationCalendarData {
   hora: string;
   duracionMinutos: number;
   notas?: string;
+  ubicacion?: string;
+  nombreNegocio?: string;
 }
 
 // Formatear número de teléfono para WhatsApp
@@ -54,12 +56,15 @@ export async function addReservationToCalendar(data: ReservationCalendarData) {
     data.notas ? `📝 Notas: ${data.notas}` : '',
   ].filter(Boolean).join('\n');
 
+  const ubicacion = data.ubicacion || 'Studio 1994 by Dago';
+  const nombreNegocio = data.nombreNegocio || 'Studio 1994';
+
   return await createCalendarEvent({
     titulo: `💈 ${data.clienteNombre} - ${data.servicioNombre}`,
     descripcion,
     fechaInicio,
     fechaFin,
-    ubicacion: 'Studio 1994 by Dago',
+    ubicacion,
   });
 }
 
