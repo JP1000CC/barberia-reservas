@@ -265,7 +265,7 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
             <td style="padding: 35px 30px;">
 
               <!-- Tarjeta del Cliente -->
-              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; margin-bottom: 25px;">
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 12px; margin-bottom: 25px;">
                 <tr>
                   <td style="padding: 20px 25px;">
                     <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Cliente</p>
