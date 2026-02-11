@@ -36,12 +36,17 @@ function generateGoogleCalendarLink(data: ReservationEmailData): string {
   const [year, month, day] = data.fecha.split('-').map(Number);
   const [hours, minutes] = data.hora.split(':').map(Number);
 
-  const startDate = new Date(year, month - 1, day, hours, minutes);
-  const endDate = new Date(startDate.getTime() + data.duracionMinutos * 60000);
+  // Calcular hora de fin
+  const endHours = hours + Math.floor((minutes + data.duracionMinutos) / 60);
+  const endMinutes = (minutes + data.duracionMinutos) % 60;
 
-  const formatDate = (d: Date) => {
-    return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  // Formatear fecha en formato YYYYMMDDTHHMMSS (hora local de España)
+  const formatDateLocal = (y: number, m: number, d: number, h: number, min: number) => {
+    return `${y}${String(m).padStart(2, '0')}${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}${String(min).padStart(2, '0')}00`;
   };
+
+  const startDateStr = formatDateLocal(year, month, day, hours, minutes);
+  const endDateStr = formatDateLocal(year, month, day, endHours, endMinutes);
 
   const nombreNegocio = data.nombreNegocio || 'Studio 1994';
   const ubicacion = data.ubicacion || '';
@@ -51,9 +56,10 @@ function generateGoogleCalendarLink(data: ReservationEmailData): string {
     `Servicio: ${data.servicioNombre}\nBarbero: ${data.barberoNombre}\nDuración: ${data.duracionMinutos} minutos\nPrecio: ${data.servicioPrecio.toFixed(2)} €`
   );
   const location = encodeURIComponent(ubicacion);
-  const dates = `${formatDate(startDate)}/${formatDate(endDate)}`;
+  const dates = `${startDateStr}/${endDateStr}`;
 
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&location=${location}`;
+  // Incluir timezone de España (ctz = calendar timezone)
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&location=${location}&ctz=Europe/Madrid`;
 }
 
 // Generar enlace de WhatsApp para cancelar/modificar cita
