@@ -20,6 +20,9 @@ export interface Barbero {
   foto_url: string | null;
   hora_inicio: string;
   hora_fin: string;
+  // Campos para horario partido (segundo turno)
+  hora_inicio_2: string | null;
+  hora_fin_2: string | null;
   dias_laborales: number[];
   activo: boolean;
   color: string;
@@ -118,6 +121,9 @@ export interface BarberoFormData {
   telefono?: string;
   hora_inicio: string;
   hora_fin: string;
+  // Campos para horario partido (segundo turno)
+  hora_inicio_2?: string;
+  hora_fin_2?: string;
   dias_laborales: number[];
   color: string;
 }

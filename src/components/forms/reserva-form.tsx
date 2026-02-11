@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, User, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface Servicio {
@@ -52,6 +52,8 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [horarioPartido, setHorarioPartido] = useState(false);
+  const [rangosHorario, setRangosHorario] = useState<Array<{inicio: string; fin: string}>>([]);
   const [clienteData, setClienteData] = useState({
     nombre: '',
     email: '',
@@ -95,9 +97,13 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
       );
       const data = await response.json();
       setAvailableSlots(data.slots || []);
+      setHorarioPartido(data.horarioPartido || false);
+      setRangosHorario(data.rangos || []);
     } catch (error) {
       console.error('Error fetching slots:', error);
       setAvailableSlots([]);
+      setHorarioPartido(false);
+      setRangosHorario([]);
     } finally {
       setLoadingSlots(false);
     }
@@ -338,19 +344,44 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
             {selectedDate && (
               <>
                 <h3 className="subsection-title">Hora disponible</h3>
+                {horarioPartido && rangosHorario.length > 1 && (
+                  <div className="schedule-info">
+                    <span className="schedule-badge">
+                      Horario: {rangosHorario[0].inicio}-{rangosHorario[0].fin} y {rangosHorario[1].inicio}-{rangosHorario[1].fin}
+                    </span>
+                  </div>
+                )}
                 {loadingSlots ? (
                   <div className="loading-slots">Cargando horarios...</div>
                 ) : availableSlots.length > 0 ? (
                   <div className="time-slots-grid">
-                    {availableSlots.map((slot) => (
-                      <div
-                        key={slot}
-                        className={`time-slot ${selectedTime === slot ? 'selected' : ''}`}
-                        onClick={() => setSelectedTime(slot)}
-                      >
-                        {slot}
-                      </div>
-                    ))}
+                    {availableSlots.map((slot, index) => {
+                      // Detectar si hay un salto de turno (más de 1 hora de diferencia)
+                      const prevSlot = index > 0 ? availableSlots[index - 1] : null;
+                      const showBreak = prevSlot && (() => {
+                        const [prevH, prevM] = prevSlot.split(':').map(Number);
+                        const [currH, currM] = slot.split(':').map(Number);
+                        const prevMins = prevH * 60 + prevM;
+                        const currMins = currH * 60 + currM;
+                        return (currMins - prevMins) > 60; // Más de 1 hora de diferencia
+                      })();
+
+                      return (
+                        <React.Fragment key={slot}>
+                          {showBreak && (
+                            <div className="time-slot-break">
+                              <span>Descanso</span>
+                            </div>
+                          )}
+                          <div
+                            className={`time-slot ${selectedTime === slot ? 'selected' : ''}`}
+                            onClick={() => setSelectedTime(slot)}
+                          >
+                            {slot}
+                          </div>
+                        </React.Fragment>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="no-slots">No hay horarios disponibles para esta fecha</div>

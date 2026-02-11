@@ -34,7 +34,18 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { nombre, email, telefono, hora_inicio, hora_fin, dias_laborales, color, activo } = body;
+    const {
+      nombre,
+      email,
+      telefono,
+      hora_inicio,
+      hora_fin,
+      hora_inicio_2,
+      hora_fin_2,
+      dias_laborales,
+      color,
+      activo
+    } = body;
 
     if (!nombre || nombre.trim().length < 2) {
       return NextResponse.json(
@@ -53,6 +64,9 @@ export async function POST(request: NextRequest) {
         telefono,
         hora_inicio,
         hora_fin,
+        // Horario partido (segundo turno)
+        hora_inicio_2: hora_inicio_2 || null,
+        hora_fin_2: hora_fin_2 || null,
         dias_laborales,
         color: color || '#3b82f6',
         activo: activo !== false,
