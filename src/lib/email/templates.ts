@@ -221,7 +221,7 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
               <div style="text-align: center; margin-bottom: 10px;">
                 <a href="${generateGoogleCalendarLink(data)}"
                    target="_blank"
-                   style="display: inline-block; background-color: #e63946; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(230,57,70,0.3);">
+                   style="display: inline-block; background-color: #16213e; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(230,57,70,0.3);">
                   📅 Agregar a Google Calendar
                 </a>
               </div>
@@ -304,7 +304,7 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
             <td style="padding: 35px 30px;">
 
               <!-- Tarjeta del Cliente -->
-              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; margin-bottom: 25px;">
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 12px; margin-bottom: 25px;">
                 <tr>
                   <td style="padding: 20px 25px;">
                     <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Cliente</p>
@@ -385,7 +385,7 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
 
               ${data.esRecurrente && data.totalCitas && data.totalCitas > 1 ? `
               <!-- Citas Recurrentes -->
-              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%); border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #11998e;">
                 <tr>
                   <td style="padding: 20px 25px;">
                     <p style="color: #1565c0; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
@@ -547,7 +547,7 @@ export function getReminderEmailTemplate(data: ReservationEmailData): string {
                 <a href="${generateWhatsAppCancelLink(data)}"
                    target="_blank"
                    style="display: inline-block; background-color: #25D366; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(37,211,102,0.3);">
-                  💬 Contactar por WhatsApp
+                  💬 Cancela por WhatsApp
                 </a>
               </div>
               ` : ''}
