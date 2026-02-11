@@ -15,13 +15,21 @@ export async function PATCH(
     // Si se va a cancelar, primero obtenemos el evento de calendar
     let googleCalendarEventId: string | null = null;
     if (estado === 'cancelada') {
-      const { data: reservaActual } = await supabase
+      console.log('=== CANCELANDO RESERVA ===');
+      console.log('Reserva ID:', params.id);
+
+      const { data: reservaActual, error: fetchError } = await supabase
         .from('reservas')
         .select('google_calendar_event_id')
         .eq('id', params.id)
         .single();
 
+      if (fetchError) {
+        console.error('Error al obtener reserva:', fetchError);
+      }
+
       googleCalendarEventId = reservaActual?.google_calendar_event_id;
+      console.log('Google Calendar Event ID encontrado:', googleCalendarEventId || 'NO TIENE');
     }
 
     const updateData: Record<string, any> = {};
@@ -55,13 +63,18 @@ export async function PATCH(
     }
 
     // Si se canceló y hay evento en Google Calendar, eliminarlo
-    if (estado === 'cancelada' && googleCalendarEventId) {
-      try {
-        const calendarResult = await removeReservationFromCalendar(googleCalendarEventId);
-        console.log('Evento eliminado del calendario:', calendarResult);
-      } catch (calendarError) {
-        console.error('Error al eliminar evento del calendario:', calendarError);
-        // No fallar la operación si el calendario falla
+    if (estado === 'cancelada') {
+      if (googleCalendarEventId) {
+        console.log('Eliminando evento de Google Calendar:', googleCalendarEventId);
+        try {
+          const calendarResult = await removeReservationFromCalendar(googleCalendarEventId);
+          console.log('Resultado eliminación calendario:', calendarResult);
+        } catch (calendarError) {
+          console.error('Error al eliminar evento del calendario:', calendarError);
+          // No fallar la operación si el calendario falla
+        }
+      } else {
+        console.log('Esta reserva NO tiene evento en Google Calendar (fue creada antes de la integración)');
       }
     }
 

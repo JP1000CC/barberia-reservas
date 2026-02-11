@@ -13,6 +13,10 @@ export interface ReservationEmailData {
   nombreNegocio?: string;
   telefonoNegocio?: string;
   reservaId?: string;
+  // Campos para citas recurrentes
+  esRecurrente?: boolean;
+  totalCitas?: number;
+  fechasRecurrentes?: string[];
 }
 
 // Formatear fecha en español
@@ -171,6 +175,41 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
               </p>
               ` : ''}
 
+              ${data.esRecurrente && data.totalCitas && data.totalCitas > 1 ? `
+              <!-- Citas Recurrentes -->
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #4caf50;">
+                <tr>
+                  <td style="padding: 20px 25px;">
+                    <p style="color: #2e7d32; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
+                      🔄 Citas Programadas (${data.totalCitas} en total)
+                    </p>
+                    <table role="presentation" style="width: 100%;">
+                      <tr>
+                        <td style="padding: 6px 0;">
+                          <span style="display: inline-block; background-color: #4caf50; color: #fff; padding: 4px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
+                            ✓ ${capitalizar(formatearFecha(data.fecha))} - ${data.hora}
+                          </span>
+                          <span style="color: #2e7d32; font-size: 12px; margin-left: 8px;">(Primera)</span>
+                        </td>
+                      </tr>
+                      ${data.fechasRecurrentes?.map((fecha, index) => `
+                      <tr>
+                        <td style="padding: 6px 0;">
+                          <span style="display: inline-block; background-color: #81c784; color: #fff; padding: 4px 12px; border-radius: 15px; font-size: 13px;">
+                            ${capitalizar(formatearFecha(fecha))} - ${data.hora}
+                          </span>
+                        </td>
+                      </tr>
+                      `).join('') || ''}
+                    </table>
+                    <p style="color: #388e3c; font-size: 12px; margin: 12px 0 0 0; font-style: italic;">
+                      Recibirás un recordatorio antes de cada cita.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              ` : ''}
+
               <p style="color: #666666; font-size: 14px; margin: 0 0 8px 0;">
                 Gracias por tu reserva. Te esperamos.
               </p>
@@ -265,7 +304,7 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
             <td style="padding: 35px 30px;">
 
               <!-- Tarjeta del Cliente -->
-              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 12px; margin-bottom: 25px;">
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; margin-bottom: 25px;">
                 <tr>
                   <td style="padding: 20px 25px;">
                     <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Cliente</p>
@@ -339,6 +378,41 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
                   <td style="padding: 15px 20px;">
                     <p style="color: #856404; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">📝 Notas del cliente</p>
                     <p style="color: #856404; font-size: 14px; margin: 0; font-style: italic;">${data.notas}</p>
+                  </td>
+                </tr>
+              </table>
+              ` : ''}
+
+              ${data.esRecurrente && data.totalCitas && data.totalCitas > 1 ? `
+              <!-- Citas Recurrentes -->
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+                <tr>
+                  <td style="padding: 20px 25px;">
+                    <p style="color: #1565c0; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
+                      🔄 Cliente Recurrente - ${data.totalCitas} citas programadas
+                    </p>
+                    <table role="presentation" style="width: 100%;">
+                      <tr>
+                        <td style="padding: 6px 0;">
+                          <span style="display: inline-block; background-color: #2196f3; color: #fff; padding: 4px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
+                            ✓ ${capitalizar(formatearFecha(data.fecha))} - ${data.hora}
+                          </span>
+                          <span style="color: #1565c0; font-size: 12px; margin-left: 8px;">(Primera)</span>
+                        </td>
+                      </tr>
+                      ${data.fechasRecurrentes?.map((fecha, index) => `
+                      <tr>
+                        <td style="padding: 6px 0;">
+                          <span style="display: inline-block; background-color: #64b5f6; color: #fff; padding: 4px 12px; border-radius: 15px; font-size: 13px;">
+                            ${capitalizar(formatearFecha(fecha))} - ${data.hora}
+                          </span>
+                        </td>
+                      </tr>
+                      `).join('') || ''}
+                    </table>
+                    <p style="color: #1976d2; font-size: 12px; margin: 12px 0 0 0; font-style: italic;">
+                      Todas las citas fueron agregadas al calendario automáticamente.
+                    </p>
                   </td>
                 </tr>
               </table>

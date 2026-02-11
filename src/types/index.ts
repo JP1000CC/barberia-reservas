@@ -70,6 +70,8 @@ export interface Reserva {
   estado: EstadoReserva;
   notas: string | null;
   recordatorio_enviado: boolean;
+  recurrente_id: string | null; // ID para vincular citas recurrentes
+  google_calendar_event_id: string | null;
   created_at: string;
   updated_at: string;
   cancelado_at: string | null;
@@ -113,6 +115,10 @@ export interface ReservaFormData {
   clienteEmail: string;
   clienteTelefono: string;
   notas?: string;
+  // Campos para citas recurrentes
+  esRecurrente?: boolean;
+  recurrencia?: '1_week' | '2_weeks' | '3_weeks' | '1_month';
+  numCitasRecurrentes?: number;
 }
 
 export interface BarberoFormData {

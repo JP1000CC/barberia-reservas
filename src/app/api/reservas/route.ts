@@ -59,6 +59,26 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Mapeo de recurrencia a días
+const RECURRENCE_DAYS: Record<string, number> = {
+  '1_week': 7,
+  '2_weeks': 14,
+  '3_weeks': 21,
+  '1_month': 30,
+};
+
+// Función para generar ID único
+function generateRecurrenteId(): string {
+  return `rec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Función para calcular la próxima fecha
+function addDaysToDate(dateStr: string, days: number): string {
+  const date = new Date(dateStr + 'T00:00:00');
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split('T')[0];
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient();
@@ -72,7 +92,11 @@ export async function POST(request: NextRequest) {
       barbero_id,
       fecha,
       hora,
-      notas
+      notas,
+      // Nuevos campos para recurrencia
+      es_recurrente,
+      recurrencia,
+      num_citas_recurrentes
     } = body;
 
     // Validaciones básicas
@@ -178,117 +202,162 @@ export async function POST(request: NextRequest) {
       clienteId = newCliente.id;
     }
 
-    // Crear la reserva
-    const { data: reserva, error: reservaError } = await supabase
-      .from('reservas')
-      .insert({
-        cliente_id: clienteId,
-        servicio_id,
-        barbero_id,
-        fecha,
-        hora_inicio,
-        hora_fin,
-        cliente_nombre,
-        cliente_email,
-        cliente_telefono,
-        servicio_nombre: servicio.nombre,
-        servicio_precio: servicio.precio,
-        notas: notas || null,
-        estado: 'confirmada'
-      })
-      .select()
-      .single();
+    // Preparar fechas para reservas
+    const fechasReserva: string[] = [fecha];
+    let recurrenteId: string | null = null;
 
-    if (reservaError) {
-      console.error('Error al crear reserva:', reservaError);
+    // Si es recurrente, generar fechas adicionales
+    if (es_recurrente && recurrencia && num_citas_recurrentes > 0) {
+      const diasIntervalo = RECURRENCE_DAYS[recurrencia];
+      if (diasIntervalo) {
+        recurrenteId = generateRecurrenteId();
+        for (let i = 1; i <= num_citas_recurrentes; i++) {
+          const nuevaFecha = addDaysToDate(fecha, diasIntervalo * i);
+          fechasReserva.push(nuevaFecha);
+        }
+      }
+    }
+
+    console.log('=== CREANDO RESERVAS ===');
+    console.log('Total de citas a crear:', fechasReserva.length);
+    console.log('Es recurrente:', es_recurrente);
+    console.log('Recurrente ID:', recurrenteId);
+
+    const reservasCreadas: any[] = [];
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminSupabase = createAdminSupabaseClient();
+
+    // Crear cada reserva
+    for (let i = 0; i < fechasReserva.length; i++) {
+      const fechaReserva = fechasReserva[i];
+      const esPrimera = i === 0;
+
+      console.log(`Creando reserva ${i + 1}/${fechasReserva.length} para fecha: ${fechaReserva}`);
+
+      // Verificar disponibilidad para esta fecha
+      const { data: existingReservation } = await supabase
+        .from('reservas')
+        .select('id')
+        .eq('barbero_id', barbero_id)
+        .eq('fecha', fechaReserva)
+        .eq('hora_inicio', hora_inicio)
+        .neq('estado', 'cancelada')
+        .single();
+
+      if (existingReservation) {
+        console.log(`Horario no disponible para ${fechaReserva}, saltando...`);
+        continue; // Saltar esta fecha si no está disponible
+      }
+
+      // Crear la reserva
+      const { data: reserva, error: reservaError } = await supabase
+        .from('reservas')
+        .insert({
+          cliente_id: clienteId,
+          servicio_id,
+          barbero_id,
+          fecha: fechaReserva,
+          hora_inicio,
+          hora_fin,
+          cliente_nombre,
+          cliente_email,
+          cliente_telefono,
+          servicio_nombre: servicio.nombre,
+          servicio_precio: servicio.precio,
+          notas: notas || null,
+          estado: 'confirmada',
+          recurrente_id: recurrenteId
+        })
+        .select()
+        .single();
+
+      if (reservaError) {
+        console.error(`Error al crear reserva para ${fechaReserva}:`, reservaError);
+        continue;
+      }
+
+      reservasCreadas.push(reserva);
+
+      // Agregar al calendario de Google
+      try {
+        const notasCalendario = recurrenteId
+          ? `${notas || ''}\n📅 Cita ${i + 1} de ${fechasReserva.length} (recurrente)`
+          : notas;
+
+        const calendarResult = await addReservationToCalendar({
+          clienteNombre: cliente_nombre,
+          clienteTelefono: cliente_telefono,
+          clienteEmail: cliente_email,
+          servicioNombre: servicio.nombre,
+          barberoNombre: barbero.nombre,
+          fecha: fechaReserva,
+          hora: hora_inicio,
+          duracionMinutos: servicio.duracion_minutos,
+          notas: notasCalendario,
+          ubicacion: config.direccion,
+          nombreNegocio: config.nombre_barberia
+        });
+
+        if (calendarResult.success && calendarResult.eventId) {
+          await adminSupabase
+            .from('reservas')
+            .update({ google_calendar_event_id: calendarResult.eventId })
+            .eq('id', reserva.id);
+        }
+      } catch (calendarError) {
+        console.error('Error al agregar al calendario:', calendarError);
+      }
+
+      // Enviar email solo para la primera cita (incluirá info de las demás si es recurrente)
+      if (esPrimera) {
+        try {
+          const reservationData = {
+            clienteNombre: cliente_nombre,
+            clienteEmail: cliente_email,
+            clienteTelefono: cliente_telefono,
+            servicioNombre: servicio.nombre,
+            servicioPrecio: servicio.precio,
+            barberoNombre: barbero.nombre,
+            fecha: fechaReserva,
+            hora: hora_inicio,
+            duracionMinutos: servicio.duracion_minutos,
+            notas,
+            ubicacion: config.direccion,
+            nombreNegocio: config.nombre_barberia,
+            telefonoNegocio: config.telefono,
+            reservaId: reserva.id,
+            // Info de recurrencia para el email
+            esRecurrente: es_recurrente && fechasReserva.length > 1,
+            totalCitas: fechasReserva.length,
+            fechasRecurrentes: fechasReserva.slice(1)
+          };
+
+          const emailResults = await sendReservationEmails(reservationData, adminEmail);
+          console.log('Emails enviados:', emailResults);
+        } catch (emailError) {
+          console.error('Error al enviar emails:', emailError);
+        }
+      }
+    }
+
+    if (reservasCreadas.length === 0) {
       return NextResponse.json(
-        { error: 'Error al crear la reserva' },
+        { error: 'No se pudo crear ninguna reserva' },
         { status: 500 }
       );
     }
 
-    // Datos para email y calendario
-    const reservationData = {
-      clienteNombre: cliente_nombre,
-      clienteEmail: cliente_email,
-      clienteTelefono: cliente_telefono,
-      servicioNombre: servicio.nombre,
-      servicioPrecio: servicio.precio,
-      barberoNombre: barbero.nombre,
-      fecha,
-      hora: hora_inicio,
-      duracionMinutos: servicio.duracion_minutos,
-      notas,
-      ubicacion: config.direccion,
-      nombreNegocio: config.nombre_barberia,
-      telefonoNegocio: config.telefono,
-      reservaId: reserva.id
-    };
-
-    // Enviar emails
-    const adminEmail = process.env.ADMIN_EMAIL;
-    console.log('=== CONFIGURACIÓN EMAILS ===');
-    console.log('ADMIN_EMAIL env:', adminEmail ? `configurado (${adminEmail})` : 'NO CONFIGURADO');
-    console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? 'configurado' : 'NO CONFIGURADO');
-
-    try {
-      const emailResults = await sendReservationEmails(reservationData, adminEmail);
-      console.log('Emails enviados:', emailResults);
-    } catch (emailError) {
-      console.error('Error al enviar emails:', emailError);
-    }
-
-    // Agregar al calendario de Google
-    try {
-      const calendarResult = await addReservationToCalendar({
-        clienteNombre: cliente_nombre,
-        clienteTelefono: cliente_telefono,
-        clienteEmail: cliente_email,
-        servicioNombre: servicio.nombre,
-        barberoNombre: barbero.nombre,
-        fecha,
-        hora: hora_inicio,
-        duracionMinutos: servicio.duracion_minutos,
-        notas,
-        ubicacion: config.direccion,
-        nombreNegocio: config.nombre_barberia
-      });
-
-      console.log('=== RESULTADO CALENDARIO ===');
-      console.log('Success:', calendarResult.success);
-      console.log('Event ID:', calendarResult.eventId);
-      console.log('Error:', calendarResult.error);
-
-      // Guardar ID del evento si se creó (usar admin client para bypass RLS)
-      if (calendarResult.success && calendarResult.eventId) {
-        console.log('Guardando event ID en reserva:', reserva.id);
-
-        const adminSupabase = createAdminSupabaseClient();
-        const { data: updateData, error: updateError } = await adminSupabase
-          .from('reservas')
-          .update({ google_calendar_event_id: calendarResult.eventId })
-          .eq('id', reserva.id)
-          .select();
-
-        if (updateError) {
-          console.error('ERROR al guardar event ID en Supabase:', updateError);
-        } else {
-          console.log('Event ID guardado correctamente:', updateData);
-        }
-      } else {
-        console.log('No se guardó event ID - success:', calendarResult.success, 'eventId:', calendarResult.eventId);
-      }
-    } catch (calendarError) {
-      console.error('Error al agregar al calendario:', calendarError);
-    }
+    console.log(`=== RESERVAS CREADAS: ${reservasCreadas.length}/${fechasReserva.length} ===`);
 
     return NextResponse.json({
       success: true,
       reserva: {
-        ...reserva,
+        ...reservasCreadas[0],
         servicio,
         barbero: { nombre: barbero.nombre }
-      }
+      },
+      totalCitasCreadas: reservasCreadas.length,
+      recurrenteId
     }, { status: 201 });
 
   } catch (error) {
