@@ -210,12 +210,33 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
 </html>`;
 }
 
+// Generar enlace de WhatsApp para que el admin contacte al cliente
+function generateWhatsAppClientLink(data: ReservationEmailData): string {
+  let phone = data.clienteTelefono.replace(/[\s\-\(\)]/g, '');
+
+  if (!phone.startsWith('+')) {
+    if (phone.startsWith('34')) {
+      phone = '+' + phone;
+    } else {
+      phone = '+34' + phone;
+    }
+  }
+
+  const fechaFormateada = capitalizar(formatearFecha(data.fecha));
+  const mensaje = encodeURIComponent(
+    `Hola ${data.clienteNombre}, te escribimos desde Studio 1994 respecto a tu cita del ${fechaFormateada} a las ${data.hora}.`
+  );
+
+  return `https://wa.me/${phone}?text=${mensaje}`;
+}
+
 // ==========================================
 // TEMPLATE: Notificación Admin (Nueva Reserva)
 // ==========================================
 export function getAdminNotificationTemplate(data: ReservationEmailData): string {
   const fechaFormateada = capitalizar(formatearFecha(data.fecha));
   const nombreNegocio = data.nombreNegocio || 'Studio 1994';
+  const ubicacion = data.ubicacion || '';
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -230,88 +251,120 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
       <td style="padding: 20px 0;">
         <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
 
-          <!-- Header Morado -->
+          <!-- Header Verde/Azul elegante -->
           <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 35px 30px; text-align: center;">
-              <p style="margin: 0 0 8px 0; font-size: 24px;">📅</p>
+            <td style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 35px 30px; text-align: center;">
+              <p style="margin: 0 0 8px 0; font-size: 28px;">🎉</p>
               <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 600;">Nueva Reserva</h1>
-              <p style="color: rgba(255,255,255,0.8); margin: 10px 0 0 0; font-size: 14px;">${nombreNegocio}</p>
+              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px; letter-spacing: 1px;">¡Tienes una nueva cita!</p>
             </td>
           </tr>
 
           <!-- Content -->
           <tr>
             <td style="padding: 35px 30px;">
-              <p style="color: #333333; font-size: 18px; margin: 0 0 25px 0; text-align: center; font-weight: 500;">
-                ¡Tienes una nueva reserva!
-              </p>
 
-              <!-- Datos del Cliente -->
-              <table role="presentation" style="width: 100%; margin-bottom: 20px;">
+              <!-- Tarjeta del Cliente -->
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; margin-bottom: 25px;">
                 <tr>
-                  <td style="padding: 15px 0; border-bottom: 1px solid #eee;">
-                    <span style="color: #999999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Cliente</span><br>
-                    <span style="color: #333333; font-size: 16px; font-weight: 600;">${data.clienteNombre}</span>
+                  <td style="padding: 20px 25px;">
+                    <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Cliente</p>
+                    <p style="color: #ffffff; font-size: 22px; font-weight: 700; margin: 0 0 10px 0;">${data.clienteNombre}</p>
+                    <table role="presentation" style="width: 100%;">
+                      <tr>
+                        <td style="padding: 3px 0;">
+                          <span style="color: rgba(255,255,255,0.9); font-size: 14px;">📱 ${data.clienteTelefono}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 3px 0;">
+                          <span style="color: rgba(255,255,255,0.9); font-size: 14px;">📧 ${data.clienteEmail}</span>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
-                <tr>
-                  <td style="padding: 15px 0; border-bottom: 1px solid #eee;">
-                    <span style="color: #999999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Email</span><br>
-                    <a href="mailto:${data.clienteEmail}" style="color: #667eea; font-size: 15px; text-decoration: none;">${data.clienteEmail}</a>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 15px 0; border-bottom: 1px solid #eee;">
-                    <span style="color: #999999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Teléfono</span><br>
-                    <span style="color: #333333; font-size: 15px;">${data.clienteTelefono}</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 15px 0; border-bottom: 1px solid #eee;">
-                    <span style="color: #999999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Servicio</span><br>
-                    <span style="color: #333333; font-size: 15px; font-weight: 500;">${data.servicioNombre}</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 15px 0; border-bottom: 1px solid #eee;">
-                    <span style="color: #999999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Barbero</span><br>
-                    <span style="color: #333333; font-size: 15px; font-weight: 500;">${data.barberoNombre}</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 15px 0; border-bottom: 1px solid #eee;">
-                    <span style="color: #999999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Fecha</span><br>
-                    <span style="color: #333333; font-size: 15px; font-weight: 500;">${fechaFormateada}</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 15px 0; border-bottom: 1px solid #eee;">
-                    <span style="color: #999999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Hora</span><br>
-                    <span style="color: #667eea; font-size: 22px; font-weight: 700;">${data.hora}</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 15px 0;">
-                    <span style="color: #999999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Precio</span><br>
-                    <span style="color: #333333; font-size: 16px; font-weight: 600;">${data.servicioPrecio.toFixed(2)} €</span>
-                  </td>
-                </tr>
-                ${data.notas ? `
-                <tr>
-                  <td style="padding: 15px 0; border-top: 1px solid #eee;">
-                    <span style="color: #999999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Notas</span><br>
-                    <span style="color: #666666; font-size: 14px; font-style: italic;">${data.notas}</span>
-                  </td>
-                </tr>
-                ` : ''}
               </table>
+
+              <!-- Detalles de la Cita -->
+              <table role="presentation" style="width: 100%; background-color: #f8f9fa; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #11998e;">
+                <tr>
+                  <td style="padding: 20px 25px;">
+                    <table role="presentation" style="width: 100%;">
+                      <tr>
+                        <td style="padding: 10px 0;">
+                          <span style="color: #666666; font-size: 14px;">📅 Fecha:</span>
+                          <span style="color: #333333; font-size: 15px; font-weight: 600; margin-left: 10px;">${fechaFormateada}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0;">
+                          <span style="color: #666666; font-size: 14px;">⏰ Hora:</span>
+                          <span style="color: #11998e; font-size: 26px; font-weight: 700; margin-left: 10px;">${data.hora}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0;">
+                          <span style="color: #666666; font-size: 14px;">✂️ Servicio:</span>
+                          <span style="color: #333333; font-size: 15px; font-weight: 500; margin-left: 10px;">${data.servicioNombre}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0;">
+                          <span style="color: #666666; font-size: 14px;">👤 Barbero:</span>
+                          <span style="color: #333333; font-size: 15px; font-weight: 500; margin-left: 10px;">${data.barberoNombre}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0;">
+                          <span style="color: #666666; font-size: 14px;">💰 Precio:</span>
+                          <span style="color: #333333; font-size: 16px; font-weight: 700; margin-left: 10px;">${data.servicioPrecio.toFixed(2)} €</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0;">
+                          <span style="color: #666666; font-size: 14px;">⏱️ Duración:</span>
+                          <span style="color: #333333; font-size: 15px; font-weight: 500; margin-left: 10px;">${data.duracionMinutos} minutos</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              ${data.notas ? `
+              <!-- Notas -->
+              <table role="presentation" style="width: 100%; background-color: #fff3cd; border-radius: 8px; margin-bottom: 25px;">
+                <tr>
+                  <td style="padding: 15px 20px;">
+                    <p style="color: #856404; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: 600;">📝 Notas del cliente</p>
+                    <p style="color: #856404; font-size: 14px; margin: 0; font-style: italic;">${data.notas}</p>
+                  </td>
+                </tr>
+              </table>
+              ` : ''}
+
+              <!-- Botón WhatsApp para contactar al cliente -->
+              <div style="text-align: center; margin-bottom: 10px;">
+                <a href="${generateWhatsAppClientLink(data)}"
+                   target="_blank"
+                   style="display: inline-block; background-color: #25D366; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(37,211,102,0.3);">
+                  💬 Contactar Cliente por WhatsApp
+                </a>
+              </div>
+
+              <p style="color: #999999; font-size: 12px; margin: 20px 0 0 0; text-align: center;">
+                La cita ya fue añadida a tu Google Calendar automáticamente
+              </p>
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
-              <p style="color: #999999; font-size: 12px; margin: 0;">
+            <td style="background-color: #f8f9fa; padding: 25px 30px; text-align: center; border-top: 1px solid #eee;">
+              <p style="color: #333333; font-size: 14px; font-weight: 600; margin: 0 0 5px 0;">${nombreNegocio}</p>
+              ${ubicacion ? `<p style="color: #666666; font-size: 12px; margin: 0 0 5px 0;">${ubicacion}</p>` : ''}
+              <p style="color: #999999; font-size: 11px; margin: 10px 0 0 0;">
                 Notificación automática del sistema de reservas
               </p>
             </td>
