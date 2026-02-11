@@ -15,9 +15,22 @@ export function formatearFecha(fecha: string | Date): string {
 }
 
 // Formatear fecha legible
-export function formatearFechaLegible(fecha: string | Date): string {
-  const d = typeof fecha === 'string' ? new Date(fecha + 'T00:00:00') : fecha;
-  return format(d, "EEEE, d 'de' MMMM", { locale: es });
+export function formatearFechaLegible(fecha: string | Date | null | undefined): string {
+  if (!fecha) return 'Fecha no disponible';
+
+  try {
+    const d = typeof fecha === 'string' ? new Date(fecha + 'T00:00:00') : fecha;
+
+    // Verificar si la fecha es válida
+    if (isNaN(d.getTime())) {
+      return 'Fecha inválida';
+    }
+
+    return format(d, "EEEE, d 'de' MMMM", { locale: es });
+  } catch (error) {
+    console.error('Error al formatear fecha:', fecha, error);
+    return 'Fecha inválida';
+  }
 }
 
 // Formatear hora
