@@ -22,18 +22,22 @@ export default function ClientesPage() {
     try {
       const res = await fetch('/api/clientes');
       const data = await res.json();
-      if (data.success) {
+      if (data.success && Array.isArray(data.data)) {
         setClientes(data.data);
+      } else {
+        setClientes([]);
       }
     } catch (error) {
+      console.error('Error al cargar clientes:', error);
       toast.error('Error al cargar clientes');
+      setClientes([]);
     } finally {
       setLoading(false);
     }
   }
 
   const clientesFiltrados = clientes.filter(cliente =>
-    cliente.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    cliente.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
     cliente.telefono?.includes(busqueda) ||
     cliente.email?.toLowerCase().includes(busqueda.toLowerCase())
   );
@@ -144,11 +148,11 @@ export default function ClientesPage() {
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
                             <span className="text-primary-600 font-medium">
-                              {cliente.nombre.charAt(0).toUpperCase()}
+                              {(cliente.nombre || '?').charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{cliente.nombre}</p>
+                            <p className="font-medium text-gray-900">{cliente.nombre || 'Sin nombre'}</p>
                             {cliente.notas && (
                               <p className="text-xs text-gray-500">{cliente.notas}</p>
                             )}
