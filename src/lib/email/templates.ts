@@ -177,7 +177,7 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
 
               ${data.esRecurrente && data.totalCitas && data.totalCitas > 1 ? `
               <!-- Citas Recurrentes -->
-              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #4caf50;">
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #4caf50;">
                 <tr>
                   <td style="padding: 20px 25px;">
                     <p style="color: #2e7d32; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
@@ -304,7 +304,7 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
             <td style="padding: 35px 30px;">
 
               <!-- Tarjeta del Cliente -->
-              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; margin-bottom: 25px;">
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 12px; margin-bottom: 25px;">
                 <tr>
                   <td style="padding: 20px 25px;">
                     <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Cliente</p>
@@ -385,7 +385,7 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
 
               ${data.esRecurrente && data.totalCitas && data.totalCitas > 1 ? `
               <!-- Citas Recurrentes -->
-              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #fdfdfd 0%, #38ef7d 100%); border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
                 <tr>
                   <td style="padding: 20px 25px;">
                     <p style="color: #1565c0; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
@@ -650,7 +650,7 @@ export function getCancellationEmailTemplate(data: ReservationEmailData): string
               </table>
 
               <p style="color: #666666; font-size: 14px; margin: 0 0 20px 0;">
-                Si deseas reagendar tu cita, puedes hacerlo en cualquier momento a través de nuestra página web o contactándonos directamente.
+                Si deseas reagendar tu cita, puedes hacerlo en cualquier momento a través de nuestra página web.
               </p>
 
               <!-- Botón para nueva reserva -->
@@ -661,17 +661,6 @@ export function getCancellationEmailTemplate(data: ReservationEmailData): string
                   📅 Reservar Nueva Cita
                 </a>
               </div>
-
-              ${telefonoNegocio ? `
-              <!-- Botón WhatsApp -->
-              <div style="text-align: center; margin-bottom: 10px;">
-                <a href="${generateWhatsAppCancelLink(data)}"
-                   target="_blank"
-                   style="display: inline-block; background-color: #25D366; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px; box-shadow: 0 2px 8px rgba(37,211,102,0.3);">
-                  💬 Contactar por WhatsApp
-                </a>
-              </div>
-              ` : ''}
 
               <p style="color: #888888; font-size: 13px; margin: 20px 0 0 0; text-align: center;">
                 Lamentamos cualquier inconveniente. ¡Esperamos verte pronto!
