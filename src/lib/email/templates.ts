@@ -221,7 +221,7 @@ export function getConfirmationEmailTemplate(data: ReservationEmailData): string
               <div style="text-align: center; margin-bottom: 10px;">
                 <a href="${generateGoogleCalendarLink(data)}"
                    target="_blank"
-                   style="display: inline-block; background-color: #16213e; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(230,57,70,0.3);">
+                   style="display: inline-block; background-color: #e63946; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(230,57,70,0.3);">
                   📅 Agregar a Google Calendar
                 </a>
               </div>
@@ -304,7 +304,7 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
             <td style="padding: 35px 30px;">
 
               <!-- Tarjeta del Cliente -->
-              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 12px; margin-bottom: 25px;">
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; margin-bottom: 25px;">
                 <tr>
                   <td style="padding: 20px 25px;">
                     <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 1px;">Cliente</p>
@@ -385,7 +385,7 @@ export function getAdminNotificationTemplate(data: ReservationEmailData): string
 
               ${data.esRecurrente && data.totalCitas && data.totalCitas > 1 ? `
               <!-- Citas Recurrentes -->
-              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%); border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #11998e;">
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
                 <tr>
                   <td style="padding: 20px 25px;">
                     <p style="color: #1565c0; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
@@ -547,13 +547,134 @@ export function getReminderEmailTemplate(data: ReservationEmailData): string {
                 <a href="${generateWhatsAppCancelLink(data)}"
                    target="_blank"
                    style="display: inline-block; background-color: #25D366; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(37,211,102,0.3);">
-                  💬 Cancela por WhatsApp
+                  💬 Contactar por WhatsApp
                 </a>
               </div>
               ` : ''}
 
               <p style="color: #f39c12; font-size: 15px; margin: 20px 0 0 0; text-align: center; font-weight: 500;">
                 ¡Te esperamos mañana!
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 25px 30px; text-align: center; border-top: 1px solid #eee;">
+              <p style="color: #333333; font-size: 14px; font-weight: 600; margin: 0 0 5px 0;">${nombreNegocio}</p>
+              ${ubicacion ? `<p style="color: #666666; font-size: 12px; margin: 0 0 5px 0;">${ubicacion}</p>` : ''}
+              ${telefonoNegocio ? `<p style="color: #666666; font-size: 12px; margin: 0;">📞 ${telefonoNegocio}</p>` : ''}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+// ==========================================
+// TEMPLATE: Cita Cancelada (Cliente)
+// ==========================================
+export function getCancellationEmailTemplate(data: ReservationEmailData): string {
+  const fechaFormateada = capitalizar(formatearFecha(data.fecha));
+  const nombreNegocio = data.nombreNegocio || 'Studio 1994';
+  const ubicacion = data.ubicacion || '';
+  const telefonoNegocio = data.telefonoNegocio || '';
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cita Cancelada</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f5f5f5;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td style="padding: 20px 0;">
+        <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+
+          <!-- Header Rojo -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 35px 30px; text-align: center;">
+              <p style="margin: 0 0 8px 0; font-size: 28px;">❌</p>
+              <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 600;">Cita Cancelada</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">Tu cita ha sido cancelada</p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 35px 30px;">
+              <p style="color: #333333; font-size: 16px; margin: 0 0 8px 0;">
+                Hola <strong>${data.clienteNombre}</strong>,
+              </p>
+              <p style="color: #666666; font-size: 15px; margin: 0 0 25px 0;">
+                Te informamos que tu cita ha sido <strong>cancelada</strong>. Estos eran los detalles:
+              </p>
+
+              <!-- Detalles de la cita cancelada (estilo gris/rojo) -->
+              <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #fdf2f2 0%, #fce8e8 100%); border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #e74c3c;">
+                <tr>
+                  <td style="padding: 20px 25px;">
+                    <table role="presentation" style="width: 100%;">
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <span style="color: #666666; font-size: 14px;">📅 Fecha:</span>
+                          <span style="color: #999999; font-size: 15px; font-weight: 600; margin-left: 10px; text-decoration: line-through;">${fechaFormateada}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <span style="color: #666666; font-size: 14px;">⏰ Hora:</span>
+                          <span style="color: #999999; font-size: 22px; font-weight: 700; margin-left: 10px; text-decoration: line-through;">${data.hora}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <span style="color: #666666; font-size: 14px;">✂️ Servicio:</span>
+                          <span style="color: #999999; font-size: 15px; font-weight: 500; margin-left: 10px;">${data.servicioNombre}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <span style="color: #666666; font-size: 14px;">👤 Barbero:</span>
+                          <span style="color: #999999; font-size: 15px; font-weight: 500; margin-left: 10px;">${data.barberoNombre}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="color: #666666; font-size: 14px; margin: 0 0 20px 0;">
+                Si deseas reagendar tu cita, puedes hacerlo en cualquier momento a través de nuestra página web o contactándonos directamente.
+              </p>
+
+              <!-- Botón para nueva reserva -->
+              <div style="text-align: center; margin-bottom: 15px;">
+                <a href="https://studio1994bydago.com"
+                   target="_blank"
+                   style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(102,126,234,0.3);">
+                  📅 Reservar Nueva Cita
+                </a>
+              </div>
+
+              ${telefonoNegocio ? `
+              <!-- Botón WhatsApp -->
+              <div style="text-align: center; margin-bottom: 10px;">
+                <a href="${generateWhatsAppCancelLink(data)}"
+                   target="_blank"
+                   style="display: inline-block; background-color: #25D366; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px; box-shadow: 0 2px 8px rgba(37,211,102,0.3);">
+                  💬 Contactar por WhatsApp
+                </a>
+              </div>
+              ` : ''}
+
+              <p style="color: #888888; font-size: 13px; margin: 20px 0 0 0; text-align: center;">
+                Lamentamos cualquier inconveniente. ¡Esperamos verte pronto!
               </p>
             </td>
           </tr>

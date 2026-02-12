@@ -40,10 +40,10 @@ export function formatearHora(hora: string): string {
 
 // Formatear precio
 export function formatearPrecio(precio: number): string {
-  return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('es-ES', {
     style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
+    currency: 'EUR',
+    minimumFractionDigits: 2,
   }).format(precio);
 }
 
@@ -128,7 +128,7 @@ export function validarEmail(email: string): boolean {
   return regex.test(email);
 }
 
-// Validar teléfono colombiano
+// Validar teléfono
 export function validarTelefono(telefono: string): boolean {
   const limpio = telefono.replace(/[\s\-\(\)]/g, '');
   return /^(\+57)?3\d{9}$/.test(limpio);

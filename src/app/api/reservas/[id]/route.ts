@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import { removeReservationFromCalendar } from '@/lib/calendar';
+import { sendCancellationEmail } from '@/lib/email';
 
 export async function PATCH(
   request: NextRequest,
@@ -12,15 +13,20 @@ export async function PATCH(
 
     const supabase = createAdminSupabaseClient();
 
-    // Si se va a cancelar, primero obtenemos el evento de calendar
+    // Si se va a cancelar, primero obtenemos los datos completos de la reserva
     let googleCalendarEventId: string | null = null;
+    let reservaCompleta: any = null;
+
     if (estado === 'cancelada') {
       console.log('=== CANCELANDO RESERVA ===');
       console.log('Reserva ID:', params.id);
 
       const { data: reservaActual, error: fetchError } = await supabase
         .from('reservas')
-        .select('google_calendar_event_id')
+        .select(`
+          *,
+          barbero:barberos(nombre, google_calendar_id)
+        `)
         .eq('id', params.id)
         .single();
 
@@ -28,6 +34,7 @@ export async function PATCH(
         console.error('Error al obtener reserva:', fetchError);
       }
 
+      reservaCompleta = reservaActual;
       googleCalendarEventId = reservaActual?.google_calendar_event_id;
       console.log('Google Calendar Event ID encontrado:', googleCalendarEventId || 'NO TIENE');
     }
@@ -62,19 +69,56 @@ export async function PATCH(
       );
     }
 
-    // Si se canceló y hay evento en Google Calendar, eliminarlo
-    if (estado === 'cancelada') {
+    // Si se canceló, eliminar del calendario y enviar email
+    if (estado === 'cancelada' && reservaCompleta) {
+      // Eliminar del calendario si existe el evento
       if (googleCalendarEventId) {
         console.log('Eliminando evento de Google Calendar:', googleCalendarEventId);
         try {
-          const calendarResult = await removeReservationFromCalendar(googleCalendarEventId);
+          const calendarResult = await removeReservationFromCalendar(
+            googleCalendarEventId,
+            reservaCompleta.barbero?.google_calendar_id
+          );
           console.log('Resultado eliminación calendario:', calendarResult);
         } catch (calendarError) {
           console.error('Error al eliminar evento del calendario:', calendarError);
-          // No fallar la operación si el calendario falla
         }
       } else {
-        console.log('Esta reserva NO tiene evento en Google Calendar (fue creada antes de la integración)');
+        console.log('Esta reserva NO tiene evento en Google Calendar');
+      }
+
+      // Obtener configuración del negocio para el email
+      const { data: configData } = await supabase
+        .from('configuracion')
+        .select('clave, valor');
+
+      const config: Record<string, string> = {};
+      configData?.forEach((item: { clave: string; valor: string }) => {
+        config[item.clave] = item.valor;
+      });
+
+      // Enviar email de cancelación al cliente
+      if (reservaCompleta.cliente_email) {
+        try {
+          console.log('Enviando email de cancelación a:', reservaCompleta.cliente_email);
+          await sendCancellationEmail({
+            clienteNombre: reservaCompleta.cliente_nombre,
+            clienteEmail: reservaCompleta.cliente_email,
+            clienteTelefono: reservaCompleta.cliente_telefono,
+            servicioNombre: reservaCompleta.servicio_nombre,
+            servicioPrecio: reservaCompleta.servicio_precio,
+            barberoNombre: reservaCompleta.barbero?.nombre || 'Barbero',
+            fecha: reservaCompleta.fecha,
+            hora: reservaCompleta.hora_inicio,
+            duracionMinutos: 30,
+            ubicacion: config.direccion,
+            nombreNegocio: config.nombre_barberia,
+            telefonoNegocio: config.telefono,
+          });
+          console.log('Email de cancelación enviado correctamente');
+        } catch (emailError) {
+          console.error('Error al enviar email de cancelación:', emailError);
+        }
       }
     }
 
@@ -98,14 +142,17 @@ export async function DELETE(
   try {
     const supabase = createAdminSupabaseClient();
 
-    // Primero obtener el evento de calendar antes de cancelar
-    const { data: reservaActual } = await supabase
+    // Primero obtener los datos completos de la reserva
+    const { data: reservaCompleta } = await supabase
       .from('reservas')
-      .select('google_calendar_event_id')
+      .select(`
+        *,
+        barbero:barberos(nombre, google_calendar_id)
+      `)
       .eq('id', params.id)
       .single();
 
-    const googleCalendarEventId = reservaActual?.google_calendar_event_id;
+    const googleCalendarEventId = reservaCompleta?.google_calendar_event_id;
 
     // Cambiar estado a cancelada en lugar de eliminar
     const { error } = await supabase
@@ -127,11 +174,47 @@ export async function DELETE(
     // Eliminar evento del calendario si existe
     if (googleCalendarEventId) {
       try {
-        const calendarResult = await removeReservationFromCalendar(googleCalendarEventId);
+        const calendarResult = await removeReservationFromCalendar(
+          googleCalendarEventId,
+          reservaCompleta?.barbero?.google_calendar_id
+        );
         console.log('Evento eliminado del calendario:', calendarResult);
       } catch (calendarError) {
         console.error('Error al eliminar evento del calendario:', calendarError);
-        // No fallar la operación si el calendario falla
+      }
+    }
+
+    // Obtener configuración del negocio para el email
+    const { data: configData } = await supabase
+      .from('configuracion')
+      .select('clave, valor');
+
+    const config: Record<string, string> = {};
+    configData?.forEach((item: { clave: string; valor: string }) => {
+      config[item.clave] = item.valor;
+    });
+
+    // Enviar email de cancelación al cliente
+    if (reservaCompleta?.cliente_email) {
+      try {
+        console.log('Enviando email de cancelación a:', reservaCompleta.cliente_email);
+        await sendCancellationEmail({
+          clienteNombre: reservaCompleta.cliente_nombre,
+          clienteEmail: reservaCompleta.cliente_email,
+          clienteTelefono: reservaCompleta.cliente_telefono,
+          servicioNombre: reservaCompleta.servicio_nombre,
+          servicioPrecio: reservaCompleta.servicio_precio,
+          barberoNombre: reservaCompleta.barbero?.nombre || 'Barbero',
+          fecha: reservaCompleta.fecha,
+          hora: reservaCompleta.hora_inicio,
+          duracionMinutos: 30,
+          ubicacion: config.direccion,
+          nombreNegocio: config.nombre_barberia,
+          telefonoNegocio: config.telefono,
+        });
+        console.log('Email de cancelación enviado correctamente');
+      } catch (emailError) {
+        console.error('Error al enviar email de cancelación:', emailError);
       }
     }
 

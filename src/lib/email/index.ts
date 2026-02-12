@@ -3,6 +3,7 @@ import {
   getConfirmationEmailTemplate,
   getAdminNotificationTemplate,
   getReminderEmailTemplate,
+  getCancellationEmailTemplate,
   ReservationEmailData
 } from './templates';
 
@@ -53,6 +54,29 @@ export async function sendReminderEmail(data: ReservationEmailData): Promise<boo
     html,
   });
 
+  return result.success;
+}
+
+// Enviar email de cancelación al cliente
+export async function sendCancellationEmail(data: ReservationEmailData): Promise<boolean> {
+  console.log('=== ENVIANDO EMAIL DE CANCELACIÓN ===');
+  console.log('Email destino:', data.clienteEmail);
+
+  if (!data.clienteEmail) {
+    console.error('ERROR: clienteEmail está vacío');
+    return false;
+  }
+
+  const html = getCancellationEmailTemplate(data);
+  const nombreNegocio = data.nombreNegocio || 'Studio 1994';
+
+  const result = await sendEmail({
+    to: data.clienteEmail,
+    subject: `❌ Cita Cancelada - ${nombreNegocio}`,
+    html,
+  });
+
+  console.log('Resultado envío cancelación:', result);
   return result.success;
 }
 

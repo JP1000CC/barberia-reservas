@@ -532,6 +532,9 @@ body {
 }
 
 .success-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-bottom: 1.5rem;
 }
 
@@ -1029,9 +1032,7 @@ body {
   .steps-container {
     gap: 0.125rem;
     padding: 0.875rem 0.5rem;
-    overflow-x: auto;
-    justify-content: flex-start;
-    -webkit-overflow-scrolling: touch;
+    justify-content: center;
   }
 
   .step-item {
