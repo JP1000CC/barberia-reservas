@@ -12,6 +12,8 @@ export interface ReservationCalendarData {
   notas?: string;
   ubicacion?: string;
   nombreNegocio?: string;
+  // ID del calendario específico del barbero
+  googleCalendarId?: string | null;
 }
 
 // Formatear número de teléfono para WhatsApp
@@ -59,16 +61,19 @@ export async function addReservationToCalendar(data: ReservationCalendarData) {
   const ubicacion = data.ubicacion || 'Studio 1994 by Dago';
   const nombreNegocio = data.nombreNegocio || 'Studio 1994';
 
-  return await createCalendarEvent({
-    titulo: `💈 ${data.clienteNombre} - ${data.servicioNombre}`,
-    descripcion,
-    fechaInicio,
-    fechaFin,
-    ubicacion,
-  });
+  return await createCalendarEvent(
+    {
+      titulo: `💈 ${data.clienteNombre} - ${data.servicioNombre}`,
+      descripcion,
+      fechaInicio,
+      fechaFin,
+      ubicacion,
+    },
+    data.googleCalendarId // Pasar el ID del calendario del barbero
+  );
 }
 
 // Eliminar reserva del calendario
-export async function removeReservationFromCalendar(eventId: string) {
-  return await deleteCalendarEvent(eventId);
+export async function removeReservationFromCalendar(eventId: string, googleCalendarId?: string | null) {
+  return await deleteCalendarEvent(eventId, googleCalendarId);
 }

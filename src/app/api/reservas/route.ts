@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     const { data: barbero } = await supabase
       .from('barberos')
-      .select('nombre')
+      .select('nombre, google_calendar_id')
       .eq('id', barbero_id)
       .single();
 
@@ -295,7 +295,9 @@ export async function POST(request: NextRequest) {
           duracionMinutos: servicio.duracion_minutos,
           notas: notasCalendario,
           ubicacion: config.direccion,
-          nombreNegocio: config.nombre_barberia
+          nombreNegocio: config.nombre_barberia,
+          // Usar el calendario específico del barbero
+          googleCalendarId: barbero.google_calendar_id
         });
 
         if (calendarResult.success && calendarResult.eventId) {

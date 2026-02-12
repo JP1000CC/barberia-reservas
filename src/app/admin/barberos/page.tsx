@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Plus, Pencil, Trash2, Loader2, User, Clock } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, User, Clock, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,7 @@ export default function BarberosPage() {
   const [horaFin2, setHoraFin2] = useState('20:00');
   const [diasLaborales, setDiasLaborales] = useState<number[]>([1, 2, 3, 4, 5, 6]);
   const [color, setColor] = useState('#3b82f6');
+  const [googleCalendarId, setGoogleCalendarId] = useState('');
 
   useEffect(() => {
     cargarBarberos();
@@ -64,6 +65,7 @@ export default function BarberosPage() {
       setHoraFin2(barbero.hora_fin_2?.slice(0, 5) || '20:00');
       setDiasLaborales(barbero.dias_laborales || [1, 2, 3, 4, 5, 6]);
       setColor(barbero.color || '#3b82f6');
+      setGoogleCalendarId(barbero.google_calendar_id || '');
     } else {
       setEditando(null);
       setNombre('');
@@ -76,6 +78,7 @@ export default function BarberosPage() {
       setHoraFin2('20:00');
       setDiasLaborales([1, 2, 3, 4, 5, 6]);
       setColor('#3b82f6');
+      setGoogleCalendarId('');
     }
     setModalOpen(true);
   }
@@ -126,6 +129,8 @@ export default function BarberosPage() {
         dias_laborales: diasLaborales,
         color,
         activo: true,
+        // Google Calendar ID específico del barbero
+        google_calendar_id: googleCalendarId.trim() || null,
       };
 
       const res = await fetch(
@@ -229,11 +234,19 @@ export default function BarberosPage() {
                       <Clock className="w-3.5 h-3.5" />
                       <span className="truncate">{formatearHorario(barbero)}</span>
                     </div>
-                    {barbero.hora_inicio_2 && (
-                      <span className="inline-block mt-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">
-                        Horario partido
-                      </span>
-                    )}
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {barbero.hora_inicio_2 && (
+                        <span className="inline-block text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">
+                          Horario partido
+                        </span>
+                      )}
+                      {barbero.google_calendar_id && (
+                        <span className="inline-block text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          Calendario
+                        </span>
+                      )}
+                    </div>
                     <div className="flex gap-1 mt-2 flex-wrap">
                       {DIAS_SEMANA.map((dia) => (
                         <span
@@ -411,6 +424,24 @@ export default function BarberosPage() {
               />
               <span className="text-sm text-gray-500">{color}</span>
             </div>
+          </div>
+
+          {/* Google Calendar ID */}
+          <div className="bg-green-50 rounded-lg p-4 space-y-3 border border-green-100">
+            <h4 className="font-medium text-green-700 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Google Calendar
+            </h4>
+            <Input
+              label="Calendar ID"
+              value={googleCalendarId}
+              onChange={(e) => setGoogleCalendarId(e.target.value)}
+              placeholder="ejemplo@group.calendar.google.com"
+            />
+            <p className="text-xs text-gray-500">
+              ID del calendario de Google específico para este barbero.
+              Puedes encontrarlo en Configuración del calendario → Integrar calendario.
+            </p>
           </div>
 
           <div className="flex gap-3 pt-4">

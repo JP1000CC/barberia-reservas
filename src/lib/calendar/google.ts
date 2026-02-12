@@ -22,15 +22,18 @@ function getCalendarClient() {
 }
 
 // Crear evento en el calendario
+// customCalendarId: ID del calendario específico del barbero (opcional)
 export async function createCalendarEvent(
-  eventData: CalendarEventData
+  eventData: CalendarEventData,
+  customCalendarId?: string | null
 ): Promise<{ success: boolean; eventId?: string; error?: string }> {
   try {
     const calendar = getCalendarClient();
-    const calendarId = process.env.GOOGLE_CALENDAR_ID;
+    // Usar el calendario del barbero si está configurado, sino usar el default
+    const calendarId = customCalendarId || process.env.GOOGLE_CALENDAR_ID;
 
     if (!calendarId) {
-      console.error('GOOGLE_CALENDAR_ID no configurado');
+      console.error('No hay Calendar ID configurado (ni del barbero ni default)');
       return { success: false, error: 'Calendar ID no configurado' };
     }
 
@@ -89,12 +92,15 @@ export async function createCalendarEvent(
 }
 
 // Eliminar evento del calendario
+// customCalendarId: ID del calendario específico del barbero (opcional)
 export async function deleteCalendarEvent(
-  eventId: string
+  eventId: string,
+  customCalendarId?: string | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const calendar = getCalendarClient();
-    const calendarId = process.env.GOOGLE_CALENDAR_ID;
+    // Usar el calendario del barbero si está configurado, sino usar el default
+    const calendarId = customCalendarId || process.env.GOOGLE_CALENDAR_ID;
 
     if (!calendarId) {
       return { success: false, error: 'Calendar ID no configurado' };

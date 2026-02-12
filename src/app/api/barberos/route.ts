@@ -44,7 +44,8 @@ export async function POST(request: NextRequest) {
       hora_fin_2,
       dias_laborales,
       color,
-      activo
+      activo,
+      google_calendar_id
     } = body;
 
     if (!nombre || nombre.trim().length < 2) {
@@ -70,6 +71,8 @@ export async function POST(request: NextRequest) {
         dias_laborales,
         color: color || '#3b82f6',
         activo: activo !== false,
+        // Google Calendar ID
+        google_calendar_id: google_calendar_id || null,
       })
       .select()
       .single();

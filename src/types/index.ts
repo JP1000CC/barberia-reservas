@@ -26,6 +26,8 @@ export interface Barbero {
   dias_laborales: number[];
   activo: boolean;
   color: string;
+  // ID del calendario de Google específico para este barbero
+  google_calendar_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -132,6 +134,8 @@ export interface BarberoFormData {
   hora_fin_2?: string;
   dias_laborales: number[];
   color: string;
+  // ID del calendario de Google
+  google_calendar_id?: string;
 }
 
 export interface ServicioFormData {
