@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, User, CheckCircle, ArrowLeft, ArrowRight, RefreshCw, Calendar } from 'lucide-react';
+import { Clock, User, CheckCircle, ArrowLeft, ArrowRight, RefreshCw, Calendar, Zap, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 interface Servicio {
   id: string;
@@ -26,6 +26,14 @@ interface Config {
   moneda: string;
   duracion_slot: number;
   dias_anticipacion_maxima: number;
+}
+
+interface CitaDisponible {
+  fecha: string;
+  hora: string;
+  barberoId: string;
+  barberoNombre: string;
+  barberoColor: string;
 }
 
 interface ReservaFormProps {
@@ -78,6 +86,14 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
   const [numCitasRecurrentes, setNumCitasRecurrentes] = useState(4); // Número de citas a crear
   const [citasCreadas, setCitasCreadas] = useState<number>(0);
 
+  // Estado para "Próxima cita disponible"
+  const [modoProximaCita, setModoProximaCita] = useState(false);
+  const [citasDisponibles, setCitasDisponibles] = useState<CitaDisponible[]>([]);
+  const [indiceCitaActual, setIndiceCitaActual] = useState(0);
+  const [loadingProximaCita, setLoadingProximaCita] = useState(false);
+  const [skipProximaCita, setSkipProximaCita] = useState(0);
+  const [hasMoreCitas, setHasMoreCitas] = useState(false);
+
   // Usar días de anticipación máxima de la configuración
   const diasAnticipacion = config.dias_anticipacion_maxima || 14;
 
@@ -122,6 +138,73 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
     } finally {
       setLoadingSlots(false);
     }
+  };
+
+  // Buscar próximas citas disponibles
+  const fetchProximasCitas = async (skip: number = 0) => {
+    if (!selectedServicio) return;
+
+    setLoadingProximaCita(true);
+    try {
+      const response = await fetch(
+        `/api/proxima-cita?duracion=${selectedServicio.duracion}&skip=${skip}`
+      );
+      const data = await response.json();
+
+      if (data.citas && data.citas.length > 0) {
+        setCitasDisponibles(data.citas);
+        setIndiceCitaActual(0);
+        setHasMoreCitas(data.hasMore || false);
+        setSkipProximaCita(skip);
+      }
+    } catch (error) {
+      console.error('Error fetching próximas citas:', error);
+      setCitasDisponibles([]);
+    } finally {
+      setLoadingProximaCita(false);
+    }
+  };
+
+  // Seleccionar una cita disponible
+  const seleccionarCitaDisponible = (cita: CitaDisponible) => {
+    // Buscar el barbero correspondiente
+    const barbero = barberos.find(b => b.id === cita.barberoId);
+    if (barbero) {
+      setSelectedBarbero(barbero);
+    }
+    // Establecer fecha
+    setSelectedDate(new Date(cita.fecha + 'T12:00:00'));
+    // Establecer hora
+    setSelectedTime(cita.hora);
+    // Salir del modo próxima cita y avanzar
+    setModoProximaCita(false);
+    // Ir directamente al paso de datos
+    setCurrentStep('datos');
+  };
+
+  // Navegar a la siguiente cita disponible
+  const siguienteCitaDisponible = () => {
+    if (indiceCitaActual < citasDisponibles.length - 1) {
+      setIndiceCitaActual(indiceCitaActual + 1);
+    } else if (hasMoreCitas) {
+      // Cargar más citas
+      fetchProximasCitas(skipProximaCita + 5);
+    }
+  };
+
+  // Navegar a la cita anterior
+  const anteriorCitaDisponible = () => {
+    if (indiceCitaActual > 0) {
+      setIndiceCitaActual(indiceCitaActual - 1);
+    }
+  };
+
+  // Formatear fecha para mostrar en cita disponible
+  const formatFechaCita = (fechaStr: string) => {
+    const fecha = new Date(fechaStr + 'T12:00:00');
+    const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    return `${dias[fecha.getDay()]}, ${fecha.getDate()} de ${meses[fecha.getMonth()]}`;
   };
 
   const formatDate = (date: Date) => {
@@ -349,27 +432,158 @@ export default function ReservaForm({ servicios, barberos, config }: ReservaForm
         {currentStep === 'barbero' && (
           <div className="step-panel">
             <h2 className="step-title">Selecciona un barbero</h2>
-            <div className="barbers-grid">
-              {barberos.filter(b => b.activo).map((barbero) => (
-                <div
-                  key={barbero.id}
-                  className={`barber-card ${selectedBarbero?.id === barbero.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedBarbero(barbero)}
-                >
-                  <div className="barber-avatar" style={{ background: barbero.color || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                    <User size={32} color="white" />
-                  </div>
-                  <h3 className="barber-name">{barbero.nombre}</h3>
+
+            {/* Opción: Cita más próxima */}
+            {!modoProximaCita && (
+              <div
+                className="proxima-cita-card"
+                onClick={() => {
+                  setModoProximaCita(true);
+                  setSelectedBarbero(null);
+                  fetchProximasCitas(0);
+                }}
+              >
+                <div className="proxima-cita-icon">
+                  <Zap size={28} color="#f59e0b" />
                 </div>
-              ))}
-            </div>
+                <div className="proxima-cita-content">
+                  <h3 className="proxima-cita-title">Cita más próxima</h3>
+                  <p className="proxima-cita-desc">Te mostramos la primera cita disponible</p>
+                </div>
+                <ArrowRight size={20} className="proxima-cita-arrow" />
+              </div>
+            )}
+
+            {/* Vista de próxima cita disponible */}
+            {modoProximaCita && (
+              <div className="proxima-cita-panel">
+                {loadingProximaCita ? (
+                  <div className="proxima-cita-loading">
+                    <Loader2 size={32} className="spinning" />
+                    <p>Buscando citas disponibles...</p>
+                  </div>
+                ) : citasDisponibles.length > 0 ? (
+                  <>
+                    <div className="cita-sugerida">
+                      <div className="cita-sugerida-header">
+                        <span className="cita-badge">
+                          <Zap size={14} /> Cita disponible
+                        </span>
+                        <span className="cita-numero">
+                          {skipProximaCita + indiceCitaActual + 1}
+                        </span>
+                      </div>
+
+                      <div className="cita-sugerida-body">
+                        <div className="cita-barbero">
+                          <div
+                            className="cita-barbero-avatar"
+                            style={{ background: citasDisponibles[indiceCitaActual].barberoColor || '#3b82f6' }}
+                          >
+                            <User size={24} color="white" />
+                          </div>
+                          <span className="cita-barbero-nombre">
+                            {citasDisponibles[indiceCitaActual].barberoNombre}
+                          </span>
+                        </div>
+
+                        <div className="cita-datetime">
+                          <div className="cita-fecha">
+                            <Calendar size={18} />
+                            <span>{formatFechaCita(citasDisponibles[indiceCitaActual].fecha)}</span>
+                          </div>
+                          <div className="cita-hora">
+                            <Clock size={18} />
+                            <span>{citasDisponibles[indiceCitaActual].hora}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="cita-sugerida-actions">
+                        <button
+                          className="btn-cita-nav"
+                          onClick={anteriorCitaDisponible}
+                          disabled={indiceCitaActual === 0 && skipProximaCita === 0}
+                        >
+                          <ChevronLeft size={20} />
+                        </button>
+
+                        <button
+                          className="btn-seleccionar-cita"
+                          onClick={() => seleccionarCitaDisponible(citasDisponibles[indiceCitaActual])}
+                        >
+                          Seleccionar esta cita
+                        </button>
+
+                        <button
+                          className="btn-cita-nav"
+                          onClick={siguienteCitaDisponible}
+                          disabled={indiceCitaActual >= citasDisponibles.length - 1 && !hasMoreCitas}
+                        >
+                          <ChevronRight size={20} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      className="btn-cancelar-proxima"
+                      onClick={() => {
+                        setModoProximaCita(false);
+                        setCitasDisponibles([]);
+                      }}
+                    >
+                      Volver a elegir barbero
+                    </button>
+                  </>
+                ) : (
+                  <div className="proxima-cita-empty">
+                    <p>No hay citas disponibles en los próximos días.</p>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => {
+                        setModoProximaCita(false);
+                        setCitasDisponibles([]);
+                      }}
+                    >
+                      Elegir barbero manualmente
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Lista de barberos (solo si no está en modo próxima cita) */}
+            {!modoProximaCita && (
+              <>
+                <div className="barbers-divider">
+                  <span>o elige un barbero</span>
+                </div>
+                <div className="barbers-grid">
+                  {barberos.filter(b => b.activo).map((barbero) => (
+                    <div
+                      key={barbero.id}
+                      className={`barber-card ${selectedBarbero?.id === barbero.id ? 'selected' : ''}`}
+                      onClick={() => setSelectedBarbero(barbero)}
+                    >
+                      <div className="barber-avatar" style={{ background: barbero.color || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                        <User size={32} color="white" />
+                      </div>
+                      <h3 className="barber-name">{barbero.nombre}</h3>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
             <div className="step-actions">
               <button className="btn-secondary" onClick={goToPreviousStep}>
                 <ArrowLeft size={16} /> Atrás
               </button>
-              <button className="btn-primary" disabled={!selectedBarbero} onClick={goToNextStep}>
-                Continuar <ArrowRight size={16} />
-              </button>
+              {!modoProximaCita && (
+                <button className="btn-primary" disabled={!selectedBarbero} onClick={goToNextStep}>
+                  Continuar <ArrowRight size={16} />
+                </button>
+              )}
             </div>
           </div>
         )}
